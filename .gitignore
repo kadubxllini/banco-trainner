@@ -1,0 +1,11 @@
+# Banco de dados (Ignora o arquivo dados.db e a pasta)
+banco_de_dados/
+
+# Backups locais (Gerados pelo backup_manager.py)
+backups/
+
+# Arquivos anexados no chat (Mantém sua pasta de uploads privada)
+static/uploads/
+
+# Cache oculto do Python
+__pycache__/

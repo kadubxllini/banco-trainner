@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banco de Dados - Trainner RH</title>
+    
+    <link rel="icon" href="{{ url_for('static', filename='logosite.png') }}" type="image/png">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- ================= SIDEBAR (LATERAL) ================= -->
+    <div class="sidebar">
+        <h2>Banco Trainner RH</h2>
+        <br>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo_clara.png') }}" class="logo-clara" width="180" alt="Logo Trainner RH">
+            
+            <img src="{{ url_for('static', filename='logo_escura.png') }}" class="logo-escura" width="180" alt="Logo Trainner RH">
+        </div>
+
+        <!-- Barra de Pesquisa com Toggle de Mensagens -->
+        <div class="search-container" id="searchContainer" style="position: relative; display: none; margin-bottom: 20px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="searchBar" placeholder="Pesquisar clientes" onkeyup="handleSearch()">
+                <div class="toggle-container" title="Alternar para buscar mensagens">
+                    <span class="toggle-label">Mensagens</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleSearchType" onchange="handleSearch()">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+            <!-- Caixa suspensa dos resultados das mensagens -->
+            <div id="msgSearchResults" class="msg-search-results" style="display: none;"></div>
+        </div>
+
+        <!-- Menu e Botões Superiores -->
+        <div class="menu-section" style="position: relative;">
+            <p class="menu-title">
+                Clientes 
+                <span class="icons">
+                    <span class="icon-btn" onclick="toggleSearch()" title="Pesquisar">🔍</span>
+                    <span class="icon-btn" onclick="abrirModalVagas()" title="Vagas">💼</span>
+                    <span class="icon-btn" onclick="abrirModalStatus()" title="Status">🕒</span>
+                    <span class="icon-btn" onclick="abrirModalSelecionadoras()" title="Selecionadoras">👤</span>
+                    <span class="icon-btn" onclick="toggleFilterMenu()" title="Filtros">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                    </span>
+                </span>
+            </p>
+
+            <!-- Dropdown de Filtros Avançados -->
+            <div class="filter-dropdown" id="filterDropdown" style="display: none;">
+                <div class="filter-header">
+                    <span class="filter-label">Filtros aplicados:</span>
+                    <a href="#" class="filter-clear" onclick="limparFiltros(event)">Limpar</a>
+                </div>
+                
+                <div class="filter-body" style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
+                    <p class="filter-subtitle">🕒 Status:</p>
+                    <div class="vagas-tag-grid" style="margin-bottom: 15px;">
+                        {% for st in status_lista %}
+                        <label class="tag-check">
+                            <input type="checkbox" class="filtro-check filtro-status" value="{{ st[0] }}" onchange="filtrarTudo()">
+                            <span class="tag-content">{{ st[1] }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+
+                    <p class="filter-subtitle">💼 Vagas:</p>
+                    <div class="vagas-tag-grid" style="margin-bottom: 15px;">
+                        {% for vaga in vagas %}
+                        <label class="tag-check">
+                            <input type="checkbox" class="filtro-check filtro-vaga" value="{{ vaga[0] }}" onchange="filtrarTudo()">
+                            <span class="tag-content">{{ vaga[1] }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    
+                    <p class="filter-subtitle">👤 Selecionadora:</p>
+                    <div class="vagas-tag-grid">
+                        {% for sel in selecionadoras %}
+                        <label class="tag-check">
+                            <input type="checkbox" class="filtro-check filtro-sel" value="{{ sel[0] }}" onchange="filtrarTudo()">
+                            <span class="tag-content">{{ sel[1] }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div> </div> <p class="menu-title" style="margin-top: 15px;">
+                Pastas <span class="plus" onclick="abrirModalPasta()">+</span>
+            </p>
+        </div>
+
+        <!-- Lista de Pastas e Clientes -->
+        <div class="clientes-lista">
+            {% for pasta in pastas_principais %}
+            <div class="pasta-container">
+                <div class="pasta-header">
+                    <p class="pasta-title" onclick="togglePasta('pasta-{{ pasta[0] }}')">
+                        <span id="seta-pasta-{{ pasta[0] }}">▼</span> 📂 {{ pasta[1] }}
+                    </p>
+                    <div class="acoes">
+                        <button data-id="{{ pasta[0] }}" data-nome="{{ pasta[1]|e }}" data-parent="" onclick="prepararEdicaoPasta(this)" class="btn-edit">✎</button>
+                        <a href="/excluir_pasta/{{ pasta[0] }}" class="btn-delete" onclick="return confirm('Excluir pasta e tirar clientes dela?')">×</a>
+                    </div>
+                </div>
+                
+                <ul class="clientes-na-pasta" id="pasta-{{ pasta[0] }}">
+                    {% for cliente in clientes_por_pasta[pasta[0]] %}
+                    <li>
+                        <div class="cliente-info" onclick="abrirChat('{{ cliente[0] }}', '{{ cliente[1]|e }}')">
+                            <span class="status-dot dot-baixa"></span>
+                            <span class="cliente-link">{{ cliente[1] }}</span>
+                        </div>
+                        <div class="acoes">
+                            <button data-id="{{ cliente[0] }}" data-nome="{{ cliente[1]|e }}" data-pasta="{{ pasta[0] }}" data-status="{{ cliente[3] or '' }}" data-urgencia="{{ cliente[2] }}" data-vagas="{{ vpe[cliente[0]]|join(',') if cliente[0] in vpe else '' }}" data-selecionadoras="{{ spe[cliente[0]]|join(',') if cliente[0] in spe else '' }}" data-contatos="{{ cpe[cliente[0]] | tojson | forceescape if cliente[0] in cpe else '[]' }}" onclick="prepararEdicao(this)" class="btn-edit">✎</button>
+                            <a href="/excluir/{{ cliente[0] }}" class="btn-delete" onclick="return confirm('Excluir cliente?')">×</a>
+                        </div>
+                    </li>
+                    {% endfor %}
+
+                    {% for sub in subpastas[pasta[0]] %}
+                    <div class="pasta-container" style="margin-top: 10px; padding-left: 10px; border-left: 1px dashed #30363d;">
+                        <div class="pasta-header">
+                            <p class="pasta-title" onclick="togglePasta('pasta-{{ sub[0] }}')">
+                                <span id="seta-pasta-{{ sub[0] }}">▼</span> 📁 {{ sub[1] }}
+                            </p>
+                            <div class="acoes">
+                                <button data-id="{{ sub[0] }}" data-nome="{{ sub[1]|e }}" data-parent="{{ pasta[0] }}" onclick="prepararEdicaoPasta(this)" class="btn-edit">✎</button>
+                                <a href="/excluir_pasta/{{ sub[0] }}" class="btn-delete" onclick="return confirm('Excluir pasta e tirar clientes dela?')">×</a>
+                            </div>
+                        </div>
+                        <ul class="clientes-na-pasta" id="pasta-{{ sub[0] }}">
+                            {% for cliente in clientes_por_pasta[sub[0]] %}
+                            <li>
+                                <div class="cliente-info" onclick="abrirChat('{{ cliente[0] }}', '{{ cliente[1]|e }}')">
+                                    <span class="status-dot dot-baixa"></span>
+                                    <span class="cliente-link">{{ cliente[1] }}</span>
+                                </div>
+                                <div class="acoes">
+                                    <button data-id="{{ cliente[0] }}" data-nome="{{ cliente[1]|e }}" data-pasta="{{ sub[0] }}" data-status="{{ cliente[3] or '' }}" data-urgencia="{{ cliente[2] }}" data-vagas="{{ vpe[cliente[0]]|join(',') if cliente[0] in vpe else '' }}" data-selecionadoras="{{ spe[cliente[0]]|join(',') if cliente[0] in spe else '' }}" data-contatos="{{ cpe[cliente[0]] | tojson | forceescape if cliente[0] in cpe else '[]' }}" onclick="prepararEdicao(this)" class="btn-edit">✎</button>
+                                    <a href="/excluir/{{ cliente[0] }}" class="btn-delete" onclick="return confirm('Excluir cliente?')">×</a>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+            
+            <br><hr><br>
+            
+            <!-- Clientes Sem Pasta -->
+            <ul class="lista-sem-pasta">
+                {% for cliente in clientes_sem_pasta %}
+                <li>
+                    <div class="cliente-info" onclick="abrirChat('{{ cliente[0] }}', '{{ cliente[1]|e }}')">
+                        <span class="status-dot dot-baixa"></span>
+                        <span class="cliente-link">{{ cliente[1] }}</span>
+                    </div>
+                    <div class="acoes">
+                        <button 
+                            data-id="{{ cliente[0] }}"
+                            data-nome="{{ cliente[1]|e }}"
+                            data-pasta=""
+                            data-status="{{ cliente[3] or '' }}"
+                            data-urgencia="{{ cliente[2] }}"
+                            data-vagas="{{ vpe[cliente[0]]|join(',') if cliente[0] in vpe else '' }}"
+                            data-selecionadoras="{{ spe[cliente[0]]|join(',') if cliente[0] in spe else '' }}"
+                            onclick="prepararEdicao(this)" class="btn-edit">✎
+                        </button>
+                        <a href="/excluir/{{ cliente[0] }}" class="btn-delete" onclick="return confirm('Excluir cliente?')">×</a>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <button class="btn-nova-cliente" onclick="abrirModalCliente()">+ Cadastrar Cliente</button>
+    </div>
+
+    <!-- ================= ÁREA CENTRAL (CHAT) ================= -->
+    <div class="main-content">
+        <div class="top-bar">
+            <button class="btn-calendario" onclick="abrirModalCalendario()">📅 Calendário</button>
+            
+            <button class="btn-calendario" style="margin-left: 10px;" onclick="toggleTheme()" title="Trocar Tema">🌓</button>
+            
+            <a href="/exportar_relatorio" class="btn-calendario" style="text-decoration: none; margin-left: 10px; background-color: #238636; border-color: #238636;">📊</a>
+        </div>
+        
+        <!-- Estado Vazio -->
+        <div class="empty-state" id="emptyState">
+            <h2>Selecione um cliente</h2>
+            <p>Clique em um cliente na lateral para visualizar e enviar mensagens.</p>
+        </div>
+
+        <!-- Chat -->
+        <div class="chat-container" id="chatContainer" style="display: none;">
+            <div class="chat-header">
+                <!-- Nome e as caixinhas -->
+                <div class="chat-header-info">
+                    <h3 id="chatClienteNome">Nome do Cliente</h3>
+                    <div id="chatClienteTags" class="chat-tags-container"></div>
+                </div>
+                
+                <div class="chat-tabs">
+                    <button class="tab-btn active" onclick="trocarAbaChat('mensagens')">Chat</button>
+                    <button class="tab-btn" onclick="trocarAbaChat('arquivos')">Arquivos</button>
+                    <!-- Nova aba de contatos -->
+                    <button class="tab-btn" onclick="trocarAbaChat('contatos')">Contatos</button>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-files-list" id="chatFilesList" style="display: none;"></div>
+            <!-- Nova área de contatos -->
+            <div class="chat-contatos-list" id="chatContatosList" style="display: none;"></div>
+            
+            <div class="chat-input-area">
+                <div id="nomeArquivoSelecionado" class="arquivo-selecionado"></div>
+                <form id="formChat" onsubmit="enviarMensagemChat(event)">
+                    <input type="hidden" id="chatClienteId" name="cliente_id">
+                    
+                    <label for="chatArquivo" class="btn-anexo" title="Anexar arquivo ou foto">📎</label>
+                    <input type="file" id="chatArquivo" name="arquivo" style="display: none;" onchange="atualizarNomeArquivo(this)" multiple>
+                    
+                    <input type="text" id="chatTexto" name="texto" placeholder="Escreva uma mensagem..." autocomplete="off">
+                    <button type="submit" class="btn-enviar">Enviar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAIS ================= -->
+    
+    <!-- Modal: Cadastrar Cliente -->
+    <div id="modalCliente" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cadastrar Cliente</h3>
+                <span class="close-modal" onclick="fecharModalCliente()">×</span>
+            </div>
+            <form action="/salvar" method="POST">
+                <input type="text" name="nome_cliente" placeholder="Nome do cliente" required>
+                <select name="pasta_id" class="select-pasta">
+                    <option value="">Sem pasta</option>
+                    {% for pasta in pastas %}
+                        <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
+                    {% endfor %}
+                </select>
+
+                <p class="section-label">Status:</p>
+                <div class="status-options">
+                    {% for st in status_lista %}
+                        <label class="status-item">
+                            <input type="radio" name="status_id" value="{{ st[0] }}" class="edit-st-radio">
+                            <span>{{ st[1] }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                
+                <p class="section-label">Vagas:</p>
+                <div class="vagas-tag-grid">
+                    {% for vaga in vagas %}
+                        <label class="tag-check"><input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}"><span class="tag-content">{{ vaga[1] }}</span></label>
+                    {% endfor %}
+                </div>
+                
+                <p class="section-label">Selecionadoras:</p>
+                <div class="vagas-tag-grid">
+                    {% for sel in selecionadoras %}
+                        <label class="tag-check"><input type="checkbox" name="selecionadoras_ids" value="{{ sel[0] }}"><span class="tag-content">{{ sel[1] }}</span></label>
+                    {% endfor %}
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Cliente -->
+        <div id="modalEditar" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Editar Cliente</h3>
+                    <span class="close-modal" onclick="fecharModalEditar()">×</span>
+                </div>
+                <form id="formEditar" method="POST">
+                    
+                    <!-- CONTAINER DAS DUAS COLUNAS -->
+                    <div class="modal-duas-colunas">
+                        
+                        <!-- LADO ESQUERDO: Dados do Cliente -->
+                        <div class="coluna-esquerda">
+                            <input type="text" name="nome_cliente" id="edit_nome" required>
+                            <select name="pasta_id" id="edit_pasta" class="select-pasta">
+                                <option value="">Sem pasta</option>
+                                {% for pasta in pastas %}
+                                    <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
+                                {% endfor %}
+                            </select>
+
+                            <p class="section-label">Status:</p>
+                            <div class="status-options">
+                                {% for st in status_lista %}
+                                    <label class="status-item">
+                                        <input type="radio" name="status_id" value="{{ st[0] }}" class="edit-st-radio">
+                                        <span>{{ st[1] }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            
+                            <p class="section-label">Vagas:</p>
+                            <div class="vagas-tag-grid">
+                                {% for vaga in vagas %}
+                                    <label class="tag-check"><input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}" class="edit-vaga-check"><span class="tag-content">{{ vaga[1] }}</span></label>
+                                {% endfor %}
+                            </div>
+                            
+                            <p class="section-label">Selecionadoras:</p>
+                            <div class="vagas-tag-grid">
+                                {% for sel in selecionadoras %}
+                                    <label class="tag-check"><input type="checkbox" name="selecionadoras_ids" value="{{ sel[0] }}" class="edit-sel-check"><span class="tag-content">{{ sel[1] }}</span></label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- LADO DIREITO: Contatos -->
+                        <div class="coluna-direita">
+                            <p class="section-label">Contatos:</p>
+                            <div id="contatos-container"></div>
+                            <button type="button" onclick="adicionarContatoBloco()" class="btn-yellow" style="width: 100%; margin-bottom: 20px; font-size: 12px; padding: 8px;">+ Adicionar Contato</button>
+                        </div>
+
+                    </div> <!-- FIM DO CONTAINER DAS COLUNAS -->
+
+                    <!-- BOTÃO DE SALVAR (Embaixo de tudo) -->
+                    <div class="modal-buttons">
+                        <button type="submit" class="btn-confirmar">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    <!-- Modal: Gerenciar Vagas -->
+    <div id="modalGerenciarVagas" class="modal">
+        <div class="modal-content modal-vagas">
+            <div class="modal-header">
+                <h3>Gerenciar Vagas</h3>
+                <span class="close-modal" onclick="fecharModalVagas()">×</span>
+            </div>
+            <form action="/salvar_vaga" method="POST" class="vaga-add-form">
+                <input type="text" name="nome_vaga" placeholder="Nova vaga" required>
+                <button type="submit" class="btn-yellow">Adicionar</button>
+            </form>
+            <div class="vagas-lista-container">
+                {% for vaga in vagas %}
+                <div class="vaga-item">
+                    <span class="vaga-nome-span">{{ vaga[1] }}</span>
+                    <div class="vaga-acoes">
+                        <button onclick="prepararEdicaoVaga('{{ vaga[0] }}', '{{ vaga[1]|e }}')" class="btn-icon">✎</button>
+                        <a href="/excluir_vaga/{{ vaga[0] }}" class="btn-icon delete" onclick="return confirm('Excluir vaga?')">×</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Gerenciar Status -->
+    <div id="modalGerenciarStatus" class="modal">
+        <div class="modal-content modal-vagas">
+            <div class="modal-header">
+                <h3>Gerenciar Status</h3>
+                <span class="close-modal" onclick="fecharModalStatus()">×</span>
+            </div>
+            <form action="/salvar_status" method="POST" class="vaga-add-form">
+                <input type="text" name="nome_status" placeholder="Novo status" required>
+                <button type="submit" class="btn-yellow">Adicionar</button>
+            </form>
+            <div class="vagas-lista-container">
+                {% for st in status_lista %}
+                <div class="vaga-item">
+                    <span>{{ st[1] }}</span>
+                    <div class="vaga-acoes">
+                        <button onclick="prepararEdicaoStatus('{{ st[0] }}', '{{ st[1]|e }}')" class="btn-icon">✎</button>
+                        <a href="/excluir_status/{{ st[0] }}" class="btn-icon delete" onclick="return confirm('Excluir status?')">×</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Status -->
+    <div id="modalEditarStatus" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Status</h3>
+                <span class="close-modal" onclick="fecharModalEditarStatus()">×</span>
+            </div>
+            <form id="formEditarStatus" method="POST">
+                <input type="text" name="nome_status" id="edit_nome_st" required>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal: Gerenciar Selecionadoras -->
+    <div id="modalGerenciarSelecionadoras" class="modal">
+        <div class="modal-content modal-vagas">
+            <div class="modal-header">
+                <h3>Gerenciar Selecionadoras</h3>
+                <span class="close-modal" onclick="fecharModalSelecionadoras()">×</span>
+            </div>
+            <form action="/salvar_selecionadora" method="POST" class="vaga-add-form">
+                <input type="text" name="nome_selecionadora" placeholder="Nova selecionadora" required>
+                <button type="submit" class="btn-yellow">Adicionar</button>
+            </form>
+            <div class="vagas-lista-container">
+                {% for sel in selecionadoras %}
+                <div class="vaga-item">
+                    <span>{{ sel[1] }}</span>
+                    <div class="vaga-acoes">
+                        <button onclick="prepararEdicaoSelecionadora('{{ sel[0] }}', '{{ sel[1]|e }}')" class="btn-icon">✎</button>
+                        <a href="/excluir_selecionadora/{{ sel[0] }}" class="btn-icon delete" onclick="return confirm('Excluir selecionadora?')">×</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+<!-- Modal: Editar Vaga -->
+    <div id="modalEditarVaga" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Vaga</h3>
+                <span class="close-modal" onclick="fecharModalEditarVaga()">×</span>
+            </div>
+            <form id="formEditarVaga" method="POST">
+                <input type="text" name="nome_vaga" id="edit_nome_vaga" required>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Selecionadora -->
+    <div id="modalEditarSelecionadora" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Selecionadora</h3>
+                <span class="close-modal" onclick="fecharModalEditarSelecionadora()">×</span>
+            </div>
+            <form id="formEditarSelecionadora" method="POST">
+                <input type="text" name="nome_selecionadora" id="edit_nome_sel" required>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Nova Pasta -->
+    <div id="modalPasta" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Pasta</h3>
+                <span class="close-modal" onclick="fecharModalPasta()">×</span>
+            </div>
+            <form action="/salvar_pasta" method="POST">
+                <input type="text" name="nome_pasta" placeholder="Nome" required>
+                <p class="section-label">Colocar dentro de (Opcional):</p>
+                <select name="parent_id" class="select-pasta">
+                    <option value="">Nenhuma (Pasta Principal)</option>
+                    {% for pasta in pastas_principais %}
+                        <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
+                    {% endfor %}
+                </select>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Pasta -->
+    <div id="modalEditarPasta" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Pasta</h3>
+                <span class="close-modal" onclick="fecharModalEditarPasta()">×</span>
+            </div>
+            <form id="formEditarPasta" method="POST">
+                <input type="text" name="nome_pasta" id="edit_nome_pasta" required>
+                <p class="section-label">Colocar dentro de (Opcional):</p>
+                <select name="parent_id" id="edit_parent_pasta" class="select-pasta">
+                    <option value="">Nenhuma (Pasta Principal)</option>
+                    {% for pasta in pastas_principais %}
+                        <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
+                    {% endfor %}
+                </select>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Calendário -->
+    <div id="modalCalendario" class="modal">
+        <div class="modal-content modal-calendario-content">
+            <div class="modal-header">
+                <h3>Calendário de Interações</h3>
+                <span class="close-modal" onclick="fecharModalCalendario()">×</span>
+            </div>
+            
+            <div class="calendar-controls">
+                <button onclick="mudarMes(-1)" class="btn-mes">◀</button>
+                <span id="mesAnoAtual" class="mes-ano-label"></span>
+                <button onclick="mudarMes(1)" class="btn-mes">▶</button>
+            </div>
+            
+            <div class="calendar-grid">
+                <div class="weekday">Dom</div><div class="weekday">Seg</div><div class="weekday">Ter</div>
+                <div class="weekday">Qua</div><div class="weekday">Qui</div><div class="weekday">Sex</div><div class="weekday">Sáb</div>
+            </div>
+            <div id="calendarDays" class="calendar-days"></div>
+
+            <div id="interacoesDiaContainer" style="display: none; margin-top: 20px;">
+                <p class="section-label">Interações em <span id="dataSelecionadaLabel"></span>:</p>
+                <div id="listaInteracoes" class="lista-interacoes-calendario"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT ================= -->
+    <script>
+        // ----------------------------------------------------
+        // CONTROLE DE TEMA (CLARO/ESCURO)
+        // ----------------------------------------------------
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const temaAtual = document.body.classList.contains('dark-mode') ? 'escuro' : 'claro';
+            localStorage.setItem('tema_preferido', temaAtual);
+        }
+
+        // Verifica a memória quando a página carrega
+        document.addEventListener("DOMContentLoaded", function() {
+            if (localStorage.getItem('tema_preferido') === 'escuro') {
+                document.body.classList.add('dark-mode');
+            }
+        });
+        // ----------------------------------------------------
+        // LÓGICA DE PESQUISA E FILTROS LATERAL
+        // ----------------------------------------------------
+        function handleSearch() {
+            let textVal = document.getElementById('searchBar').value;
+            let isMsgSearch = document.getElementById('toggleSearchType').checked;
+            let msgResultsBox = document.getElementById('msgSearchResults');
+            let searchInput = document.getElementById('searchBar');
+
+            filtrarTudo(); 
+
+            if (isMsgSearch) {
+                searchInput.placeholder = "Pesquisar mensagens";
+                if (textVal.length < 2) {
+                    msgResultsBox.style.display = 'none';
+                    return;
+                }
+
+                fetch('/api/pesquisar_mensagens?q=' + encodeURIComponent(textVal))
+                    .then(res => res.json())
+                    .then(data => {
+                        msgResultsBox.innerHTML = '';
+                        if (data.length === 0) {
+                            msgResultsBox.innerHTML = '<div style="padding: 10px; color: #8b949e; font-size: 12px; text-align: center;">Nenhuma mensagem encontrada.</div>';
+                        } else {
+                            data.forEach(msg => {
+                                let div = document.createElement('div');
+                                div.className = 'msg-result-item';
+                                div.innerHTML = `
+                                    <div class="msg-result-cliente">💬 ${msg.cliente_nome} <span style="color:#8b949e;font-weight:normal;font-size:10px;float:right">${msg.data}</span></div>
+                                    <div class="msg-result-texto">${msg.texto}</div>
+                                `;
+                                div.onclick = () => {
+                                    idFocoChat = msg.msg_id; // Salva o ID da mensagem pesquisada
+                                    abrirChat(msg.cliente_id, msg.cliente_nome);
+                                    msgResultsBox.style.display = 'none';
+                                    toggleSearch(); 
+                                };
+                                msgResultsBox.appendChild(div);
+                            });
+                        }
+                        msgResultsBox.style.display = 'block';
+                    });
+            } else {
+                searchInput.placeholder = "Pesquisar clientes";
+                msgResultsBox.style.display = 'none';
+            }
+        }
+
+        function toggleFilterMenu() {
+            const f = document.getElementById('filterDropdown');
+            f.style.display = f.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function limparFiltros(e) {
+            if(e) e.preventDefault();
+            document.querySelectorAll('.filtro-check').forEach(c => c.checked = false);
+            filtrarTudo();
+        }
+
+        function filtrarTudo() {
+            let isMsgSearch = document.getElementById('toggleSearchType').checked;
+            let textVal = isMsgSearch ? "" : document.getElementById('searchBar').value.toLowerCase();
+            
+            // Pega os IDs selecionados nos filtros
+            let fStatus = Array.from(document.querySelectorAll('.filtro-status:checked')).map(c => c.value);
+            let fVagas = Array.from(document.querySelectorAll('.filtro-vaga:checked')).map(c => c.value);
+            let fSels = Array.from(document.querySelectorAll('.filtro-sel:checked')).map(c => c.value);
+
+            document.querySelectorAll('.clientes-lista li').forEach(li => {
+                let btn = li.querySelector('.btn-edit');
+                if(!btn) return;
+
+                let nome = btn.getAttribute('data-nome').toLowerCase();
+                let status = btn.getAttribute('data-status'); // Puxa o ID do status do cliente
+                let vagas = btn.getAttribute('data-vagas').split(',');
+                let selecionadoras = btn.getAttribute('data-selecionadoras').split(',');
+
+                let matchText = nome.includes(textVal);
+                let matchStatus = fStatus.length === 0 || fStatus.includes(status);
+                let matchVaga = fVagas.length === 0 || fVagas.some(v => vagas.includes(v));
+                let matchSel = fSels.length === 0 || fSels.some(s => selecionadoras.includes(s));
+
+                // Só exibe se passar em todos os filtros ativos
+                li.style.display = (matchText && matchStatus && matchVaga && matchSel) ? "flex" : "none";
+            });
+
+            // Esconde pastas que ficaram vazias após o filtro
+            document.querySelectorAll('.pasta-container').forEach(pasta => {
+                let clientesNaPasta = pasta.querySelectorAll('li');
+                let temClienteVisivel = Array.from(clientesNaPasta).some(cli => cli.style.display !== 'none');
+                pasta.style.display = temClienteVisivel ? "block" : "none";
+            });
+        }
+
+        // ----------------------------------------------------
+        // CONTROLE DOS MODAIS
+        // ----------------------------------------------------
+        function toggleSearch() {
+            const c = document.getElementById('searchContainer');
+            c.style.display = (c.style.display === "none" || c.style.display === "") ? "block" : "none";
+            if(c.style.display === "block") document.getElementById('searchBar').focus();
+        }
+
+        // ----------------------------------------------------
+        // LÓGICA DE PASTAS E MEMÓRIA DE ESTADO
+        // ----------------------------------------------------
+        function togglePasta(id) {
+            const l = document.getElementById(id);
+            const s = document.getElementById('seta-' + id);
+            
+            if (l.style.display === "none") {
+                l.style.display = "block";
+                s.innerText = "▼";
+                localStorage.setItem('estado_' + id, 'aberto'); // Salva na memória
+            } else {
+                l.style.display = "none";
+                s.innerText = "▶";
+                localStorage.setItem('estado_' + id, 'fechado'); // Salva na memória
+            }
+        }
+
+        // Roda assim que a página carrega para aplicar o que estava salvo
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('.clientes-na-pasta').forEach(pasta => {
+                let id = pasta.id;
+                let estadoSalvo = localStorage.getItem('estado_' + id);
+                const s = document.getElementById('seta-' + id);
+                
+                // Se foi salvo como fechado, recolhe a pasta
+                if (estadoSalvo === "fechado") {
+                    pasta.style.display = "none";
+                    if (s) s.innerText = "▶";
+                } 
+                // Se não tiver nada salvo ou estiver como aberto, mantém expandido
+                else {
+                    pasta.style.display = "block";
+                    if (s) s.innerText = "▼";
+                }
+            });
+        });
+
+        function abrirModalVagas() { document.getElementById('modalGerenciarVagas').style.display = 'flex'; }
+        function fecharModalVagas() { document.getElementById('modalGerenciarVagas').style.display = 'none'; }
+        
+        function abrirModalStatus() { document.getElementById('modalGerenciarStatus').style.display = 'flex'; }
+        function fecharModalStatus() { document.getElementById('modalGerenciarStatus').style.display = 'none'; }
+
+        function abrirModalSelecionadoras() { document.getElementById('modalGerenciarSelecionadoras').style.display = 'flex'; }
+        function fecharModalSelecionadoras() { document.getElementById('modalGerenciarSelecionadoras').style.display = 'none'; }
+        
+        function abrirModalCliente() { document.getElementById('modalCliente').style.display = 'flex'; }
+        function fecharModalCliente() { document.getElementById('modalCliente').style.display = 'none'; }
+        
+        function abrirModalPasta() { document.getElementById('modalPasta').style.display = 'flex'; }
+        function fecharModalPasta() { document.getElementById('modalPasta').style.display = 'none'; }
+
+        // Preparação de Edições
+        function prepararEdicao(b) {
+            document.getElementById('formEditar').action = '/editar/' + b.getAttribute('data-id');
+            document.getElementById('edit_nome').value = b.getAttribute('data-nome');
+            document.getElementById('edit_pasta').value = b.getAttribute('data-pasta');
+
+            const stId = b.getAttribute('data-status');
+            document.querySelectorAll('#formEditar .edit-st-radio').forEach(r => {
+                r.checked = (r.value === stId);
+            });
+            
+            const vIds = b.getAttribute('data-vagas').split(',');
+            const sIds = b.getAttribute('data-selecionadoras').split(',');
+            
+            document.querySelectorAll('.edit-vaga-check').forEach(c => c.checked = vIds.includes(c.value));
+            document.querySelectorAll('.edit-sel-check').forEach(c => c.checked = sIds.includes(c.value));
+            
+            document.getElementById('modalEditar').style.display = 'flex';
+
+            const contatosContainer = document.getElementById('contatos-container');
+            contatosContainer.innerHTML = ''; 
+            const contatosLista = JSON.parse(b.getAttribute('data-contatos') || '[]');
+            contatosLista.forEach(c => adicionarContatoBloco(c.nome, c.email, c.telefone));
+        }
+        function fecharModalEditar() { document.getElementById('modalEditar').style.display = 'none'; }
+
+        function prepararEdicaoVaga(id, n) { 
+            document.getElementById('formEditarVaga').action = '/editar_vaga/'+id; 
+            document.getElementById('edit_nome_vaga').value = n; 
+            fecharModalVagas(); 
+            document.getElementById('modalEditarVaga').style.display = 'flex'; 
+        }
+        function fecharModalEditarVaga() { 
+            document.getElementById('modalEditarVaga').style.display = 'none'; 
+            abrirModalVagas(); 
+        }
+
+        function prepararEdicaoStatus(id, n) { 
+            document.getElementById('formEditarStatus').action = '/editar_status/'+id; 
+            document.getElementById('edit_nome_st').value = n; 
+            fecharModalStatus(); 
+            document.getElementById('modalEditarStatus').style.display = 'flex'; 
+        }
+        function fecharModalEditarStatus() { 
+            document.getElementById('modalEditarStatus').style.display = 'none'; 
+            abrirModalStatus(); 
+        }
+
+        function prepararEdicaoSelecionadora(id, n) { 
+            document.getElementById('formEditarSelecionadora').action = '/editar_selecionadora/'+id; 
+            document.getElementById('edit_nome_sel').value = n; 
+            fecharModalSelecionadoras(); 
+            document.getElementById('modalEditarSelecionadora').style.display = 'flex'; 
+        }
+        function fecharModalEditarSelecionadora() { 
+            document.getElementById('modalEditarSelecionadora').style.display = 'none'; 
+            abrirModalSelecionadoras(); 
+        }
+
+        function prepararEdicaoPasta(b) { 
+            document.getElementById('formEditarPasta').action = '/editar_pasta/'+b.getAttribute('data-id'); 
+            document.getElementById('edit_nome_pasta').value = b.getAttribute('data-nome'); 
+            document.getElementById('edit_parent_pasta').value = b.getAttribute('data-parent') || ''; 
+            document.getElementById('modalEditarPasta').style.display = 'flex'; 
+        }
+        function fecharModalEditarPasta() { document.getElementById('modalEditarPasta').style.display = 'none'; }
+
+        function adicionarContatoBloco(nome = '', email = '', telefone = '') {
+            const container = document.getElementById('contatos-container');
+            const div = document.createElement('div');
+            div.className = 'contato-bloco';
+            div.innerHTML = `
+                <span class="btn-remover-contato" onclick="if(confirm('Tem certeza que deseja excluir este contato?')) this.parentElement.remove()" title="Remover contato">×</span>
+                <input type="text" name="contato_nome[]" placeholder="Nome do contato" value="${nome}">
+                <input type="email" name="contato_email[]" placeholder="E-mail" value="${email}">
+                <input type="text" name="contato_telefone[]" placeholder="Telefone" value="${telefone}">
+            `;
+            container.appendChild(div);
+        }
+        // Fechar Modal Clicando Fora
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+                let containerInt = document.getElementById('interacoesDiaContainer');
+                if(containerInt) containerInt.style.display = 'none';
+            }
+        }
+
+        // ----------------------------------------------------
+        // LÓGICA DO CALENDÁRIO
+        // ----------------------------------------------------
+        let dataCalendario = new Date();
+        let diasComInteracao = [];
+        let idFocoChat = null;
+
+        function abrirModalCalendario() {
+            document.getElementById('modalCalendario').style.display = 'flex';
+            dataCalendario = new Date(); 
+            fetchDiasComInteracao().then(() => renderCalendario());
+        }
+
+        function fecharModalCalendario() {
+            document.getElementById('modalCalendario').style.display = 'none';
+            document.getElementById('interacoesDiaContainer').style.display = 'none';
+        }
+
+        async function fetchDiasComInteracao() {
+            let res = await fetch('/api/dias_com_interacao');
+            diasComInteracao = await res.json();
+        }
+
+        function mudarMes(direcao) {
+            dataCalendario.setMonth(dataCalendario.getMonth() + direcao);
+            renderCalendario();
+            document.getElementById('interacoesDiaContainer').style.display = 'none';
+        }
+
+        function renderCalendario() {
+            const container = document.getElementById('calendarDays');
+            container.innerHTML = '';
+            
+            const ano = dataCalendario.getFullYear();
+            const mes = dataCalendario.getMonth();
+            
+            const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            document.getElementById('mesAnoAtual').innerText = `${mesesNomes[mes]} ${ano}`;
+
+            const primeiroDia = new Date(ano, mes, 1).getDay();
+            const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+
+            for (let i = 0; i < primeiroDia; i++) {
+                let div = document.createElement('div');
+                div.className = 'day empty';
+                container.appendChild(div);
+            }
+
+            for (let dia = 1; dia <= ultimoDia; dia++) {
+                let div = document.createElement('div');
+                div.className = 'day';
+                div.innerText = dia;
+                
+                let mesStr = String(mes + 1).padStart(2, '0');
+                let diaStr = String(dia).padStart(2, '0');
+                let dataStr = `${ano}-${mesStr}-${diaStr}`;
+                
+                if (diasComInteracao.includes(dataStr)) {
+                    div.classList.add('has-interaction');
+                }
+                
+                div.onclick = () => selecionarDiaCalendario(dataStr, dia, mesStr, ano, event);
+                container.appendChild(div);
+            }
+        }
+
+        function selecionarDiaCalendario(dataStr, dia, mes, ano, e) {
+            document.querySelectorAll('.calendar-days .day').forEach(d => d.classList.remove('selected'));
+            e.target.classList.add('selected');
+
+            if (!diasComInteracao.includes(dataStr)) {
+                document.getElementById('interacoesDiaContainer').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('dataSelecionadaLabel').innerText = `${dia}/${mes}/${ano}`;
+            
+            fetch('/api/interacoes_dia/' + dataStr)
+                .then(res => res.json())
+                .then(clientes => {
+                    let lista = document.getElementById('listaInteracoes');
+                    lista.innerHTML = '';
+                    clientes.forEach(cli => {
+                        let btn = document.createElement('button');
+                        btn.className = 'btn-cliente-calendario';
+                        btn.innerText = `💬 ${cli.nome}`;
+                        btn.onclick = () => {
+                            fecharModalCalendario();
+                            dataFocoChat = `${String(dia).padStart(2, '0')}/${mes}/${ano}`;
+                            abrirChat(cli.id, cli.nome);
+                        };
+                        lista.appendChild(btn);
+                    });
+                    document.getElementById('interacoesDiaContainer').style.display = 'block';
+                });
+        }
+
+        // ----------------------------------------------------
+        // LÓGICA DO CHAT
+        // ----------------------------------------------------
+        let clienteAtual = null;
+
+        function abrirChat(id, nome) {
+            clienteAtual = id;
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'flex';
+            document.getElementById('chatClienteNome').innerText = nome;
+            document.getElementById('chatClienteId').value = id;
+            carregarMensagens();
+            // Busca as tags do cliente para o cabeçalho
+            fetch('/api/cliente_tags/' + id)
+                .then(res => res.json())
+                .then(data => {
+                    let html = '';
+                    if (data.status) html += `<span class="header-tag tag-status">${data.status}</span>`;
+                    data.vagas.forEach(v => html += `<span class="header-tag tag-vaga">${v}</span>`);
+                    data.selecionadoras.forEach(s => html += `<span class="header-tag tag-sel">${s}</span>`);
+                    document.getElementById('chatClienteTags').innerHTML = html;
+                });
+
+            trocarAbaChat('mensagens'); // Sempre abre no chat por padrão
+        }
+
+        function carregarMensagens() {
+            if(!clienteAtual) return;
+            fetch('/get_mensagens/' + clienteAtual)
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('chatMessages');
+                    container.innerHTML = ''; 
+                    
+                    let elementoFoco = null;
+
+                    data.forEach(msg => {
+                        let divMsg = document.createElement('div');
+                        divMsg.className = 'mensagem-item';
+                        divMsg.id = "msg-" + msg.id; // Dá um ID para a div na tela
+                        
+                        // Compara o ID (usando == para evitar erro de tipo texto/número)
+                        if (idFocoChat == msg.id) {
+                            elementoFoco = divMsg;
+                            divMsg.style.border = '2px solid #58a6ff'; 
+                            divMsg.style.boxShadow = '0 0 15px rgba(88, 166, 255, 0.4)';
+                        }
+
+                        let conteudoHTML = `
+                            <div class="msg-header" style="display: flex; justify-content: space-between; width: 100%;">
+                                <div class="msg-acoes">
+                                    <span title="Editar" onclick="editarMensagemChat(${msg.id}, this)">✎</span>
+                                    <span title="Excluir" onclick="excluirMensagemChat(${msg.id})">×</span>
+                                </div>
+                                <span class="msg-data">${msg.data}</span>
+                            </div>
+                        `;
+                        
+                        if(msg.texto) conteudoHTML += `<p class="msg-texto">${msg.texto}</p>`;
+                        
+                        if(msg.path) {
+                            if(msg.tipo === 'imagem') {
+                                conteudoHTML += `<img src="/static/${msg.path}" class="msg-img">`;
+                            } else {
+                                conteudoHTML += `<a href="/static/${msg.path}" target="_blank" class="msg-arquivo">📄 Ver Anexo</a>`;
+                            }
+                        }
+                        
+                        divMsg.innerHTML = conteudoHTML;
+                        container.appendChild(divMsg);
+                    });
+                    
+                    if (elementoFoco) {
+                        // Tempo para o navegador renderizar as mensagens antes de rolar
+                        setTimeout(() => {
+                            elementoFoco.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            idFocoChat = null; // Limpa após usar
+                        }, 200);
+                    } else {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                });
+        }
+
+        function atualizarNomeArquivo(input) {
+            const display = document.getElementById('nomeArquivoSelecionado');
+            if(input.files.length > 1) {
+                display.innerText = '📎 ' + input.files.length + ' arquivos selecionados';
+            } else if (input.files.length === 1) {
+                display.innerText = '📎 ' + input.files[0].name;
+            } else {
+                display.innerText = '';
+            }
+        }
+
+        function enviarMensagemChat(e) {
+            e.preventDefault(); 
+            const form = document.getElementById('formChat');
+            const formData = new FormData(form);
+            
+            if(!formData.get('texto') && (!formData.get('arquivo') || formData.get('arquivo').size === 0)) return;
+            
+            fetch('/enviar_mensagem', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'sucesso') {
+                    form.reset(); 
+                    document.getElementById('nomeArquivoSelecionado').innerText = '';
+                    carregarMensagens(); 
+                }
+            });
+        }
+        function trocarAbaChat(aba) {
+            const btnChat = document.querySelector('.tab-btn:nth-child(1)');
+            const btnArquivos = document.querySelector('.tab-btn:nth-child(2)');
+            const btnContatos = document.querySelector('.tab-btn:nth-child(3)');
+
+            const divMensagens = document.getElementById('chatMessages');
+            const divArquivos = document.getElementById('chatFilesList');
+            const divContatos = document.getElementById('chatContatosList');
+            const inputArea = document.querySelector('.chat-input-area');
+
+            divMensagens.style.display = 'none';
+            divArquivos.style.display = 'none';
+            divContatos.style.display = 'none';
+
+            [btnChat, btnArquivos, btnContatos].forEach(b => b?.classList.remove('active'));
+
+            if (aba === 'mensagens') {
+                divMensagens.style.display = 'flex';
+                btnChat.classList.add('active');
+                inputArea.style.display = 'flex';
+                carregarMensagens();
+            } else if (aba === 'arquivos') {
+                divArquivos.style.display = 'block';
+                btnArquivos.classList.add('active');
+                inputArea.style.display = 'none';
+                carregarListaArquivos();
+            } else if (aba === 'contatos') {
+                divContatos.style.display = 'flex';
+                btnContatos.classList.add('active');
+                inputArea.style.display = 'none';
+                carregarListaContatos();
+            }
+        }
+
+        function carregarListaArquivos() {
+            if(!clienteAtual) return;
+
+            const container = document.getElementById('chatContatosList');
+            container.innerHTML = '<p style="text-align:center; padding:20px; color:#8b949e;">Carregando contatos...</p>';
+            
+            fetch('/get_arquivos/' + clienteAtual)
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById('chatFilesList');
+                    container.innerHTML = '';
+                    
+                    if(data.length === 0) {
+                        container.innerHTML = '<p style="text-align:center; padding:20px; color:#8b949e;">Nenhum arquivo enviado para este cliente.</p>';
+                        return;
+                    }
+
+                    data.forEach(arq => {
+                        let div = document.createElement('div');
+                        div.className = 'arquivo-item-lista';
+                        div.innerHTML = `
+                            <div class="arq-icon">${arq.tipo === 'imagem' ? '🖼️' : '📄'}</div>
+                            <div class="arq-info">
+                                <span class="arq-nome">${arq.texto || arq.path.split('/').pop()}</span>
+                                <span class="arq-data">${arq.data}</span>
+                            </div>
+                            <a href="/static/${arq.path}" target="_blank" class="btn-baixar-arq">Abrir</a>
+                        `;
+                        container.appendChild(div);
+                    });
+                });
+        }
+        function carregarListaContatos() {
+            if(!clienteAtual) return;
+            fetch('/get_contatos/' + clienteAtual)
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById('chatContatosList');
+                    container.innerHTML = '';
+                    
+                    if(data.length === 0) {
+                        container.innerHTML = '<p style="text-align:center; padding:20px; color:#8b949e;">Nenhum contato cadastrado.</p>';
+                        return;
+                    }
+
+                    data.forEach(c => {
+                        let div = document.createElement('div');
+                        div.className = 'contato-card';
+                        // Cria o bloco com link clicável pro whatsapp e pro email
+                        div.innerHTML = `
+                            <div class="c-nome">👤 ${c.nome || 'Nome não informado'}</div>
+                            ${c.email ? `<div class="c-info">✉️ <a href="mailto:${c.email}">${c.email}</a></div>` : ''}
+                            ${c.telefone ? `<div class="c-info">📞 <a href="https://wa.me/55${c.telefone.replace(/\D/g,'')}" target="_blank">${c.telefone}</a></div>` : ''}
+                            
+                        `;
+                        container.appendChild(div);
+                    });
+                });
+        }
+        function excluirMensagemChat(id) {
+            if(!confirm("Apagar esta mensagem? O arquivo também será excluído.")) return;
+            
+            fetch('/excluir_mensagem/' + id, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'sucesso') carregarMensagens();
+            });
+        }
+
+        function editarMensagemChat(id, btnElement) {
+            // Puxa o texto atual da tela para colocar dentro da caixinha de edição
+            let textoTag = btnElement.closest('.mensagem-item').querySelector('.msg-texto');
+            let textoAtual = textoTag ? textoTag.innerText : '';
+            
+            let novoTexto = prompt("Edite sua mensagem:", textoAtual);
+            
+            // Se o usuário clicou em cancelar ou não mudou nada, não faz nada
+            if(novoTexto === null || novoTexto === textoAtual) return;
+
+            let formData = new FormData();
+            formData.append('texto', novoTexto);
+
+            fetch('/editar_mensagem/' + id, { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'sucesso') carregarMensagens();
+            });
+        }
+    </script>
+</body>
+</html>
