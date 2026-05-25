@@ -334,104 +334,47 @@ def excluir_mensagem(id):
 @app.route('/exportar_relatorio')
 def exportar_relatorio():
     conn = conectar()
-
-    # 1. Pastas (Ordenadas como no site: mais novas no topo)
-    pastas_db = conn.execute('SELECT id, nome, parent_id FROM Pasta ORDER BY id DESC').fetchall()
-    pastas_dict = {p[0]: {'nome': p[1], 'parent_id': p[2]} for p in pastas_db}
-
-    def obter_nome_pasta(pasta_id):
-        if not pasta_id:
-            return "Sem Pasta"
-        pasta = pastas_dict.get(pasta_id)
-        if not pasta:
-            return "Desconhecida"
-        if pasta['parent_id']:
-            parent_nome = pastas_dict[pasta['parent_id']]['nome']
-            return f"{parent_nome} > {pasta['nome']}"
-        return pasta['nome']
-
-    # 2. Clientes (Ordenados como no site: mais novos no topo)
-    clientes_db = conn.execute('''
-        SELECT e.id, e.nome, s.nome as status, e.pasta_id
+    
+    # Nova consulta: Cria uma linha para cada Vaga vinculada ao cliente
+    query = '''
+        SELECT 
+            IFNULL(p.nome, 'Sem Pasta') as pasta,
+            e.nome as empresa,
+            IFNULL(v.nome, 'Sem Vaga') as vaga,
+            IFNULL(st.nome, '') as status,
+            cv.taxa as taxa,
+            (SELECT GROUP_CONCAT(sel.nome, ', ') FROM Selecionadora sel JOIN Cliente_Selecionadora cs ON sel.id = cs.selecionadora_id WHERE cs.cliente_id = e.id) as selecionadoras,
+            (SELECT GROUP_CONCAT(c.nome, ', ') FROM Contato c WHERE c.cliente_id = e.id) as c_nome,
+            (SELECT GROUP_CONCAT(c.email, ', ') FROM Contato c WHERE c.cliente_id = e.id) as c_email,
+            (SELECT GROUP_CONCAT(c.telefone, ', ') FROM Contato c WHERE c.cliente_id = e.id) as c_tel
         FROM Cliente e
-        LEFT JOIN Status s ON e.status_id = s.id
-        ORDER BY e.id DESC
-    ''').fetchall()
-
-    # 3. Puxa os relacionamentos
-    vagas_por_cliente = defaultdict(list)
-    for c_id, v_nome in conn.execute('SELECT ev.cliente_id, v.nome FROM Cliente_Vaga ev JOIN Vaga v ON ev.vaga_id = v.id').fetchall():
-        vagas_por_cliente[c_id].append(v_nome)
-
-    sels_por_cliente = defaultdict(list)
-    for c_id, s_nome in conn.execute('SELECT es.cliente_id, s.nome FROM Cliente_Selecionadora es JOIN Selecionadora s ON es.selecionadora_id = s.id').fetchall():
-        sels_por_cliente[c_id].append(s_nome)
-
-    contatos_por_cliente = defaultdict(list)
-    for c in conn.execute('SELECT cliente_id, nome, email, telefone FROM Contato').fetchall():
-        contatos_por_cliente[c[0]].append({
-            'nome': c[1] if c[1] and c[1].strip() else 'Não informado',
-            'email': c[2] if c[2] and c[2].strip() else 'Não informado',
-            'telefone': c[3] if c[3] and c[3].strip() else 'Não informado'
-        })
-
-    # 4. Replica a ORDEM EXATA do site (Pastas Principais -> Subpastas -> Sem Pasta)
-    pastas_principais = [p for p in pastas_db if p[2] is None]
-    subpastas = defaultdict(list)
-    for p in pastas_db:
-        if p[2] is not None:
-            subpastas[p[2]].append(p)
-
-    clientes_por_pasta = defaultdict(list)
-    clientes_sem_pasta = []
-    for cli in clientes_db:
-        if cli[3]:
-            clientes_por_pasta[cli[3]].append(cli)
-        else:
-            clientes_sem_pasta.append(cli)
-
-    # Monta a lista final exatamente como aparece na tela
-    clientes_ordenados = []
-    for pasta in pastas_principais:
-        p_id = pasta[0]
-        clientes_ordenados.extend(clientes_por_pasta.get(p_id, []))
-        for sub in subpastas.get(p_id, []):
-            sub_id = sub[0]
-            clientes_ordenados.extend(clientes_por_pasta.get(sub_id, []))
-            
-    clientes_ordenados.extend(clientes_sem_pasta)
-
+        LEFT JOIN Pasta p ON e.pasta_id = p.id
+        LEFT JOIN Cliente_Vaga cv ON e.id = cv.cliente_id
+        LEFT JOIN Vaga v ON cv.vaga_id = v.id
+        LEFT JOIN Status st ON cv.status_id = st.id
+        ORDER BY pasta ASC, empresa ASC, vaga ASC
+    '''
+    dados = conn.execute(query).fetchall()
     conn.close()
 
-    # 5. Monta o arquivo CSV
     output = io.StringIO()
-    writer = csv.writer(output, delimiter=';') 
+    writer = csv.writer(output, delimiter=';') # Ponto e vírgula para o Excel BR
     
-    # Cabeçalho
-    writer.writerow(['PASTA', 'EMPRESA', 'STATUS', 'VAGAS', 'SELECIONADORAS', 'CONTATOS-NOME', 'CONTATOS-EMAIL', 'CONTATOS-TELEFONE'])
-
-    for cli in clientes_ordenados:
-        c_id, nome_empresa, status, pasta_id = cli
-        nome_pasta = obter_nome_pasta(pasta_id)
-
-        lista_contatos = contatos_por_cliente[c_id]
-        str_nomes = ", ".join([c['nome'] for c in lista_contatos])
-        str_emails = ", ".join([c['email'] for c in lista_contatos])
-        str_tels = ", ".join([c['telefone'] for c in lista_contatos])
-
-        writer.writerow([
-            nome_pasta,
-            nome_empresa,
-            status or "",
-            ", ".join(vagas_por_cliente[c_id]),
-            ", ".join(sels_por_cliente[c_id]),
-            str_nomes,
-            str_emails,
-            str_tels
-        ])
+    # Cabeçalho com as novas colunas
+    writer.writerow(['PASTA', 'EMPRESA', 'VAGA', 'STATUS', 'TAXA', 'SELECIONADORA', 'C-NOME', 'C-EMAIL', 'C-TELEFONE'])
+    
+    for linha in dados:
+        # Troca valores nulos (None) do banco de dados por um texto vazio para não ficar escrito "None" no Excel
+        linha_formatada = [str(item) if item is not None else '' for item in linha]
+        
+        # Se existir uma taxa na vaga (posição 4 do array), coloca o símbolo de % do lado dela
+        if linha_formatada[4]:
+            linha_formatada[4] = f"{linha_formatada[4]}%"
+            
+        writer.writerow(linha_formatada)
     
     output.seek(0)
-    conteudo = "\ufeff" + output.getvalue()
+    conteudo = "\ufeff" + output.getvalue() # Adiciona o BOM para o Excel ler acentos direito
     
     response = make_response(conteudo)
     response.headers["Content-Disposition"] = f"attachment; filename=relatorio_clientes_{datetime.now().strftime('%d_%m_%Y')}.csv"
