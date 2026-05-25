@@ -21,17 +21,14 @@
         </div>
     </div>
 
-    <!-- ================= SIDEBAR (LATERAL) ================= -->
     <div class="sidebar">
         <h2>Banco Trainner RH</h2>
         <br>
         <div class="logo">
-            <img src="{{ url_for('static', filename='img/logo_clara.png') }}" class="logo-clara" width="180" alt="Logo Trainner RH">
-            
-            <img src="{{ url_for('static', filename='img/logo_escura.png') }}" class="logo-escura" width="180" alt="Logo Trainner RH">
+            <img src="{{ url_for('static', filename='img/logo_clara.png') }}" class="logo-clara" width="180" alt="Logo">
+            <img src="{{ url_for('static', filename='img/logo_escura.png') }}" class="logo-escura" width="180" alt="Logo">
         </div>
 
-        <!-- Barra de Pesquisa com Toggle de Mensagens -->
         <div class="search-container" id="searchContainer" style="position: relative; display: none; margin-bottom: 20px;">
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="text" id="searchBar" placeholder="Pesquisar clientes" onkeyup="handleSearch()">
@@ -43,11 +40,9 @@
                     </label>
                 </div>
             </div>
-            <!-- Caixa suspensa dos resultados das mensagens -->
             <div id="msgSearchResults" class="msg-search-results" style="display: none;"></div>
         </div>
 
-        <!-- Menu e Botões Superiores -->
         <div class="menu-section" style="position: relative;">
             <p class="menu-title">
                 Clientes 
@@ -64,7 +59,6 @@
                 </span>
             </p>
 
-            <!-- Dropdown de Filtros Avançados -->
             <div class="filter-dropdown" id="filterDropdown" style="display: none;">
                 <div class="filter-header">
                     <span class="filter-label">Filtros aplicados:</span>
@@ -101,12 +95,14 @@
                         </label>
                         {% endfor %}
                     </div>
-                </div> </div> <p class="menu-title" style="margin-top: 15px;">
+                </div> 
+            </div> 
+
+            <p class="menu-title" style="margin-top: 15px;">
                 Pastas <span class="plus" onclick="abrirModalPasta()">+</span>
             </p>
         </div>
 
-        <!-- Lista de Pastas e Clientes -->
         <div class="clientes-lista">
             {% for pasta in pastas_principais %}
             <div class="pasta-container">
@@ -179,7 +175,6 @@
             
             <br><hr><br>
             
-            <!-- Clientes Sem Pasta -->
             <ul class="lista-sem-pasta">
                 {% for cliente in clientes_sem_pasta %}
                 <li>
@@ -214,30 +209,21 @@
         <button class="btn-nova-cliente" onclick="abrirModalCliente()">+ Cadastrar Cliente</button>
     </div>
 
-    <!-- ================= ÁREA CENTRAL (CHAT) ================= -->
     <div class="main-content">
         <div class="top-bar">
             <button class="btn-calendario" onclick="abrirModalCalendario()">📅 Calendário</button>
-            
             <button class="btn-calendario" style="margin-left: 10px;" onclick="toggleTheme()" title="Trocar Tema">🌓</button>
-            
             <button class="btn-calendario" style="margin-left: 10px;" onclick="abrirModalLembretes()" title="Lembretes">⏰</button>
-
             <a href="/exportar_relatorio" class="btn-calendario" style="text-decoration: none; margin-left: 10px;">📊</a>
         </div>
 
-        
-        
-        <!-- Estado Vazio -->
         <div class="empty-state" id="emptyState">
             <h2>Selecione um cliente</h2>
             <p>Clique em um cliente na lateral para visualizar e enviar mensagens.</p>
         </div>
 
-        <!-- Chat -->
         <div class="chat-container" id="chatContainer" style="display: none;">
             <div class="chat-header">
-                <!-- Nome e as caixinhas -->
                 <div class="chat-header-info">
                     <h3 id="chatClienteNome">Nome do Cliente</h3>
                     <div id="chatClienteTags" class="chat-tags-container"></div>
@@ -246,14 +232,12 @@
                 <div class="chat-tabs">
                     <button class="tab-btn active" onclick="trocarAbaChat('mensagens')">Chat</button>
                     <button class="tab-btn" onclick="trocarAbaChat('arquivos')">Arquivos</button>
-                    <!-- Nova aba de contatos -->
                     <button class="tab-btn" onclick="trocarAbaChat('contatos')">Contatos</button>
                 </div>
             </div>
             
             <div class="chat-messages" id="chatMessages"></div>
             <div class="chat-files-list" id="chatFilesList" style="display: none;"></div>
-            <!-- Nova área de contatos -->
             <div class="chat-contatos-list" id="chatContatosList" style="display: none;"></div>
             
             <div class="chat-input-area">
@@ -271,9 +255,6 @@
         </div>
     </div>
 
-    <!-- ================= MODAIS ================= -->
-    
-    <!-- Modal: Cadastrar Cliente -->
     <div id="modalCliente" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -325,258 +306,130 @@
         </div>
     </div>
 
-    <!-- Modal: Editar Cliente -->
-        <div id="modalEditar" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Editar Cliente</h3>
-                    <span class="close-modal" onclick="fecharModalEditar()">×</span>
-                </div>
-                <form id="formEditar" method="POST">
-                    
-                    <!-- CONTAINER DAS DUAS COLUNAS -->
-                    <div class="modal-duas-colunas">
-                        
-                        <!-- LADO ESQUERDO: Dados do Cliente -->
-                        <div class="coluna-esquerda">
-                            <input type="text" name="nome_cliente" id="edit_nome" required>
-                            <select name="pasta_id" id="edit_pasta" class="select-pasta">
-                                <option value="">Sem pasta</option>
-                                {% for pasta in pastas %}
-                                    <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
-                                {% endfor %}
-                            </select>
-
-                            <p class="section-label">Vagas e seus Status:</p>
-                            <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--borda); padding: 10px; border-radius: 8px; background: var(--bg-fundo); margin-bottom: 10px;">
-                                {% for vaga in vagas %}
-                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px;">
-                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; flex-grow: 1;">
-                                            <input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}" class="edit-vaga-check" id="edit_check_{{ vaga[0] }}" onchange="document.getElementById('edit_status_{{ vaga[0] }}').disabled = !this.checked; document.getElementById('edit_taxa_{{ vaga[0] }}').disabled = !this.checked;">
-                                            <span>{{ vaga[1] }}</span>
-                                        </label>
-                                        
-                                        <div style="display: flex; gap: 5px;">
-                                            <select name="status_vaga_{{ vaga[0] }}" id="edit_status_{{ vaga[0] }}" class="select-pasta edit-status-select" style="width: 140px; margin: 0; padding: 5px;" disabled>
-                                                <option value="">Sem Status</option>
-                                                {% for st in status_lista %}
-                                                    <option value="{{ st[0] }}">{{ st[1] }}</option>
-                                                {% endfor %}
-                                            </select>
-                                            <input type="number" name="taxa_vaga_{{ vaga[0] }}" id="edit_taxa_{{ vaga[0] }}" min="0" max="999.999" step="0.001" placeholder="Taxa %" class="select-pasta" style="width: 80px; margin: 0; padding: 5px;" disabled>
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                            
-                            <p class="section-label">Selecionadoras:</p>
-                            <div class="vagas-tag-grid">
-                                {% for sel in selecionadoras %}
-                                    <label class="tag-check"><input type="checkbox" name="selecionadoras_ids" value="{{ sel[0] }}" class="edit-sel-check"><span class="tag-content">{{ sel[1] }}</span></label>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                        <!-- LADO DIREITO: Contatos -->
-                        <div class="coluna-direita">
-                            <p class="section-label">Contatos:</p>
-                            <div id="contatos-container"></div>
-                            <button type="button" onclick="adicionarContatoBloco()" class="btn-yellow" style="width: 100%; margin-bottom: 20px; font-size: 12px; padding: 8px;">+ Adicionar Contato</button>
-                        </div>
-
-                    </div> <!-- FIM DO CONTAINER DAS COLUNAS -->
-
-                    <!-- BOTÃO DE SALVAR (Embaixo de tudo) -->
-                    <div class="modal-buttons">
-                        <button type="submit" class="btn-confirmar">Salvar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-    <!-- Modal: Gerenciar Vagas -->
-    <div id="modalGerenciarVagas" class="modal">
-        <div class="modal-content modal-vagas">
-            <div class="modal-header">
-                <h3>Gerenciar Vagas</h3>
-                <span class="close-modal" onclick="fecharModalVagas()">×</span>
-            </div>
-            <form action="/salvar_vaga" method="POST" class="vaga-add-form">
-                <input type="text" name="nome_vaga" placeholder="Nova vaga" required>
-                <button type="submit" class="btn-yellow">Adicionar</button>
-            </form>
-            <div class="vagas-lista-container">
-                {% for vaga in vagas %}
-                <div class="vaga-item">
-                    <span class="vaga-nome-span">{{ vaga[1] }}</span>
-                    <div class="vaga-acoes">
-                        <button onclick="prepararEdicaoVaga('{{ vaga[0] }}', '{{ vaga[1]|e }}')" class="btn-icon">✎</button>
-                        <a href="/excluir_vaga/{{ vaga[0] }}" class="btn-icon delete" onclick="return confirm('Excluir vaga?')">×</a>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Gerenciar Status -->
-    <div id="modalGerenciarStatus" class="modal">
-        <div class="modal-content modal-vagas">
-            <div class="modal-header">
-                <h3>Gerenciar Status</h3>
-                <span class="close-modal" onclick="fecharModalStatus()">×</span>
-            </div>
-            <form action="/salvar_status" method="POST" class="vaga-add-form">
-                <input type="text" name="nome_status" placeholder="Novo status" required>
-                <button type="submit" class="btn-yellow">Adicionar</button>
-            </form>
-            <div class="vagas-lista-container">
-                {% for st in status_lista %}
-                <div class="vaga-item">
-                    <span>{{ st[1] }}</span>
-                    <div class="vaga-acoes">
-                        <button onclick="prepararEdicaoStatus('{{ st[0] }}', '{{ st[1]|e }}')" class="btn-icon">✎</button>
-                        <a href="/excluir_status/{{ st[0] }}" class="btn-icon delete" onclick="return confirm('Excluir status?')">×</a>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Editar Status -->
-    <div id="modalEditarStatus" class="modal">
+    <div id="modalEditar" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Editar Status</h3>
-                <span class="close-modal" onclick="fecharModalEditarStatus()">×</span>
+                <h3>Editar Cliente</h3>
+                <span class="close-modal" onclick="fecharModalEditar()">×</span>
             </div>
-            <form id="formEditarStatus" method="POST">
-                <input type="text" name="nome_status" id="edit_nome_st" required>
+            <form id="formEditar" method="POST">
+                <div class="modal-duas-colunas">
+                    <div class="coluna-esquerda">
+                        <input type="text" name="nome_cliente" id="edit_nome" required>
+                        <select name="pasta_id" id="edit_pasta" class="select-pasta">
+                            <option value="">Sem pasta</option>
+                            {% for pasta in pastas %}
+                                <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <p class="section-label">Vagas e seus Status:</p>
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--borda); padding: 10px; border-radius: 8px; background: var(--bg-fundo); margin-bottom: 10px;">
+                            {% for vaga in vagas %}
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; flex-grow: 1;">
+                                        <input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}" class="edit-vaga-check" id="edit_check_{{ vaga[0] }}" onchange="document.getElementById('edit_status_{{ vaga[0] }}').disabled = !this.checked; document.getElementById('edit_taxa_{{ vaga[0] }}').disabled = !this.checked;">
+                                        <span>{{ vaga[1] }}</span>
+                                    </label>
+                                    
+                                    <div style="display: flex; gap: 5px;">
+                                        <select name="status_vaga_{{ vaga[0] }}" id="edit_status_{{ vaga[0] }}" class="select-pasta edit-status-select" style="width: 140px; margin: 0; padding: 5px;" disabled>
+                                            <option value="">Sem Status</option>
+                                            {% for st in status_lista %}
+                                                <option value="{{ st[0] }}">{{ st[1] }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <input type="number" name="taxa_vaga_{{ vaga[0] }}" id="edit_taxa_{{ vaga[0] }}" min="0" max="999.999" step="0.001" placeholder="Taxa %" class="select-pasta" style="width: 80px; margin: 0; padding: 5px;" disabled>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <p class="section-label">Selecionadoras:</p>
+                        <div class="vagas-tag-grid">
+                            {% for sel in selecionadoras %}
+                                <label class="tag-check"><input type="checkbox" name="selecionadoras_ids" value="{{ sel[0] }}" class="edit-sel-check"><span class="tag-content">{{ sel[1] }}</span></label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="coluna-direita">
+                        <p class="section-label">Contatos:</p>
+                        <div id="contatos-container"></div>
+                        <button type="button" onclick="adicionarContatoBloco()" class="btn-yellow" style="width: 100%; margin-bottom: 20px; font-size: 12px; padding: 8px;">+ Adicionar Contato</button>
+                    </div>
+                </div>
+
                 <div class="modal-buttons">
                     <button type="submit" class="btn-confirmar">Salvar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div id="modalGerenciarVagas" class="modal">
+        <div class="modal-content modal-vagas">
+            <div class="modal-header"><h3>Gerenciar Vagas</h3><span class="close-modal" onclick="fecharModalVagas()">×</span></div>
+            <form action="/salvar_vaga" method="POST" class="vaga-add-form"><input type="text" name="nome_vaga" placeholder="Nova vaga" required><button type="submit" class="btn-yellow">Adicionar</button></form>
+            <div class="vagas-lista-container">{% for vaga in vagas %}<div class="vaga-item"><span>{{ vaga[1] }}</span><div class="vaga-acoes"><button onclick="prepararEdicaoVaga('{{ vaga[0] }}', '{{ vaga[1]|e }}')" class="btn-icon">✎</button><a href="/excluir_vaga/{{ vaga[0] }}" class="btn-icon delete" onclick="return confirm('Excluir vaga?')">×</a></div></div>{% endfor %}</div>
+        </div>
+    </div>
+
+    <div id="modalGerenciarStatus" class="modal">
+        <div class="modal-content modal-vagas">
+            <div class="modal-header"><h3>Gerenciar Status</h3><span class="close-modal" onclick="fecharModalStatus()">×</span></div>
+            <form action="/salvar_status" method="POST" class="vaga-add-form"><input type="text" name="nome_status" placeholder="Novo status" required><button type="submit" class="btn-yellow">Adicionar</button></form>
+            <div class="vagas-lista-container">{% for st in status_lista %}<div class="vaga-item"><span>{{ st[1] }}</span><div class="vaga-acoes"><button onclick="prepararEdicaoStatus('{{ st[0] }}', '{{ st[1]|e }}')" class="btn-icon">✎</button><a href="/excluir_status/{{ st[0] }}" class="btn-icon delete" onclick="return confirm('Excluir status?')">×</a></div></div>{% endfor %}</div>
         </div>
     </div>
     
-    <!-- Modal: Gerenciar Selecionadoras -->
     <div id="modalGerenciarSelecionadoras" class="modal">
         <div class="modal-content modal-vagas">
-            <div class="modal-header">
-                <h3>Gerenciar Selecionadoras</h3>
-                <span class="close-modal" onclick="fecharModalSelecionadoras()">×</span>
-            </div>
-            <form action="/salvar_selecionadora" method="POST" class="vaga-add-form">
-                <input type="text" name="nome_selecionadora" placeholder="Nova selecionadora" required>
-                <button type="submit" class="btn-yellow">Adicionar</button>
-            </form>
-            <div class="vagas-lista-container">
-                {% for sel in selecionadoras %}
-                <div class="vaga-item">
-                    <span>{{ sel[1] }}</span>
-                    <div class="vaga-acoes">
-                        <button onclick="prepararEdicaoSelecionadora('{{ sel[0] }}', '{{ sel[1]|e }}')" class="btn-icon">✎</button>
-                        <a href="/excluir_selecionadora/{{ sel[0] }}" class="btn-icon delete" onclick="return confirm('Excluir selecionadora?')">×</a>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
+            <div class="modal-header"><h3>Gerenciar Selecionadoras</h3><span class="close-modal" onclick="fecharModalSelecionadoras()">×</span></div>
+            <form action="/salvar_selecionadora" method="POST" class="vaga-add-form"><input type="text" name="nome_selecionadora" placeholder="Nova selecionadora" required><button type="submit" class="btn-yellow">Adicionar</button></form>
+            <div class="vagas-lista-container">{% for sel in selecionadoras %}<div class="vaga-item"><span>{{ sel[1] }}</span><div class="vaga-acoes"><button onclick="prepararEdicaoSelecionadora('{{ sel[0] }}', '{{ sel[1]|e }}')" class="btn-icon">✎</button><a href="/excluir_selecionadora/{{ sel[0] }}" class="btn-icon delete" onclick="return confirm('Excluir selecionadora?')">×</a></div></div>{% endfor %}</div>
         </div>
     </div>
 
-<!-- Modal: Editar Vaga -->
-    <div id="modalEditarVaga" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Editar Vaga</h3>
-                <span class="close-modal" onclick="fecharModalEditarVaga()">×</span>
-            </div>
-            <form id="formEditarVaga" method="POST">
-                <input type="text" name="nome_vaga" id="edit_nome_vaga" required>
-                <div class="modal-buttons">
-                    <button type="submit" class="btn-confirmar">Salvar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <div id="modalEditarVaga" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Vaga</h3><span class="close-modal" onclick="fecharModalEditarVaga()">×</span></div><form id="formEditarVaga" method="POST"><input type="text" name="nome_vaga" id="edit_nome_vaga" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
+    <div id="modalEditarStatus" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Status</h3><span class="close-modal" onclick="fecharModalEditarStatus()">×</span></div><form id="formEditarStatus" method="POST"><input type="text" name="nome_status" id="edit_nome_st" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
+    <div id="modalEditarSelecionadora" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Selecionadora</h3><span class="close-modal" onclick="fecharModalEditarSelecionadora()">×</span></div><form id="formEditarSelecionadora" method="POST"><input type="text" name="nome_selecionadora" id="edit_nome_sel" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
 
-    <!-- Modal: Editar Selecionadora -->
-    <div id="modalEditarSelecionadora" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Editar Selecionadora</h3>
-                <span class="close-modal" onclick="fecharModalEditarSelecionadora()">×</span>
-            </div>
-            <form id="formEditarSelecionadora" method="POST">
-                <input type="text" name="nome_selecionadora" id="edit_nome_sel" required>
-                <div class="modal-buttons">
-                    <button type="submit" class="btn-confirmar">Salvar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal: Nova Pasta -->
     <div id="modalPasta" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>Nova Pasta</h3>
-                <span class="close-modal" onclick="fecharModalPasta()">×</span>
-            </div>
+            <div class="modal-header"><h3>Nova Pasta</h3><span class="close-modal" onclick="fecharModalPasta()">×</span></div>
             <form action="/salvar_pasta" method="POST">
                 <input type="text" name="nome_pasta" placeholder="Nome" required>
                 <p class="section-label">Colocar dentro de (Opcional):</p>
-                <select name="parent_id" class="select-pasta">
-                    <option value="">Nenhuma (Pasta Principal)</option>
-                    {% for pasta in pastas_principais %}
-                        <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
-                    {% endfor %}
-                </select>
-                <div class="modal-buttons">
-                    <button type="submit" class="btn-confirmar">Salvar</button>
-                </div>
+                <select name="parent_id" class="select-pasta"><option value="">Nenhuma (Pasta Principal)</option>{% for pasta in pastas_principais %}<option value="{{ pasta[0] }}">{{ pasta[1] }}</option>{% endfor %}</select>
+                <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
             </form>
         </div>
     </div>
 
-    <!-- Modal: Editar Pasta -->
     <div id="modalEditarPasta" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>Editar Pasta</h3>
-                <span class="close-modal" onclick="fecharModalEditarPasta()">×</span>
-            </div>
+            <div class="modal-header"><h3>Editar Pasta</h3><span class="close-modal" onclick="fecharModalEditarPasta()">×</span></div>
             <form id="formEditarPasta" method="POST">
                 <input type="text" name="nome_pasta" id="edit_nome_pasta" required>
                 <p class="section-label">Colocar dentro de (Opcional):</p>
-                <select name="parent_id" id="edit_parent_pasta" class="select-pasta">
-                    <option value="">Nenhuma (Pasta Principal)</option>
-                    {% for pasta in pastas_principais %}
-                        <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
-                    {% endfor %}
-                </select>
-                <div class="modal-buttons">
-                    <button type="submit" class="btn-confirmar">Salvar</button>
-                </div>
+                <select name="parent_id" id="edit_parent_pasta" class="select-pasta"><option value="">Nenhuma (Pasta Principal)</option>{% for pasta in pastas_principais %}<option value="{{ pasta[0] }}">{{ pasta[1] }}</option>{% endfor %}</select>
+                <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
             </form>
         </div>
     </div>
 
-    <!-- Modal: Calendário -->
     <div id="modalCalendario" class="modal">
         <div class="modal-content modal-calendario-content">
             <div class="modal-header">
                 <h3>Calendário de Interações</h3>
                 <span class="close-modal" onclick="fecharModalCalendario()">×</span>
             </div>
-            
             <div class="calendar-controls">
                 <button onclick="mudarMes(-1)" class="btn-mes">◀</button>
                 <span id="mesAnoAtual" class="mes-ano-label"></span>
                 <button onclick="mudarMes(1)" class="btn-mes">▶</button>
             </div>
-            
             <div class="calendar-grid">
                 <div class="weekday">Dom</div><div class="weekday">Seg</div><div class="weekday">Ter</div>
                 <div class="weekday">Qua</div><div class="weekday">Qui</div><div class="weekday">Sex</div><div class="weekday">Sáb</div>
@@ -590,15 +443,13 @@
         </div>
     </div>
 
-    <!-- Modal: Lembretes -->
     <div id="modalLembretes" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Meus Lembretes</h3>
                 <span class="close-modal" onclick="fecharModalLembretes()">×</span>
             </div>
-            <div id="listaLembretes" style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
-                </div>
+            <div id="listaLembretes" style="max-height: 350px; overflow-y: auto; padding-right: 5px;"></div>
         </div>
     </div>
 
@@ -611,55 +462,66 @@
             <form id="formCriarLembrete" onsubmit="salvarNovoLembrete(event)">
                 <input type="hidden" id="lembreteMsgId" name="mensagem_id">
                 <input type="hidden" id="lembreteTexto" name="texto">
-                
                 <p class="section-label">Quando você quer ser lembrado?</p>
                 <input type="datetime-local" id="lembreteDataHora" name="data_alerta" required style="width: 100%; padding: 10px; background: var(--bg-input); border: 1px solid var(--borda); color: var(--texto-principal); border-radius: 6px; outline: none; margin-bottom: 15px; color-scheme: dark;">
-                
-                <div class="modal-buttons">
-                    <button type="submit" class="btn-confirmar">Salvar</button>
-                </div>
+                <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
             </form>
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT ================= -->
     <script>
         // ----------------------------------------------------
-        // CONTROLE DE TEMA (CLARO/ESCURO)
+        // INICIALIZAÇÃO & ESTADOS GERAIS
         // ----------------------------------------------------
+        document.addEventListener("DOMContentLoaded", function() {
+            // Aplica o tema
+            if (localStorage.getItem('tema_preferido') === 'escuro') {
+                document.body.classList.add('dark-mode');
+            }
+            
+            // Restaura estado das pastas
+            document.querySelectorAll('.clientes-na-pasta').forEach(pasta => {
+                let id = pasta.id;
+                let estadoSalvo = localStorage.getItem('estado_' + id);
+                const s = document.getElementById('seta-' + id);
+                
+                if (estadoSalvo === "fechado") {
+                    pasta.style.display = "none";
+                    if (s) s.innerText = "▶";
+                } else {
+                    pasta.style.display = "block";
+                    if (s) s.innerText = "▼";
+                }
+            });
+
+            // Lembretes
+            verificarLembretePendente();
+            setInterval(verificarLembretePendente, 300000); 
+        });
+
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
-            const temaAtual = document.body.classList.contains('dark-mode') ? 'escuro' : 'claro';
-            localStorage.setItem('tema_preferido', temaAtual);
+            localStorage.setItem('tema_preferido', document.body.classList.contains('dark-mode') ? 'escuro' : 'claro');
         }
 
-        // Verifica a memória quando a página carrega
-        document.addEventListener("DOMContentLoaded", function() {
-            if (localStorage.getItem('tema_preferido') === 'escuro') {
-                document.body.classList.add('dark-mode');
+        // Fechar Modais Clicando Fora
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+                let containerInt = document.getElementById('interacoesDiaContainer');
+                if(containerInt) containerInt.style.display = 'none';
             }
-        });
-        // ----------------------------------------------------
-        // LEMBRETES
-        // ----------------------------------------------------
-        function abrirModalLembretes() {
-            document.getElementById('modalLembretes').style.display = 'flex';
-            carregarListaLembretes(); // Vamos criar essa função no próximo passo
         }
 
-        function fecharModalLembretes() {
-            document.getElementById('modalLembretes').style.display = 'none';
+        // ----------------------------------------------------
+        // LÓGICA DA SIDEBAR (BUSCA E PASTAS)
+        // ----------------------------------------------------
+        function toggleSearch() {
+            const c = document.getElementById('searchContainer');
+            c.style.display = (c.style.display === "none" || c.style.display === "") ? "block" : "none";
+            if(c.style.display === "block") document.getElementById('searchBar').focus();
         }
 
-        // Verifica a memória quando a página carrega
-        document.addEventListener("DOMContentLoaded", function() {
-            if (localStorage.getItem('tema_preferido') === 'escuro') {
-                document.body.classList.add('dark-mode');
-            }
-        });
-        // ----------------------------------------------------
-        // LÓGICA DE PESQUISA E FILTROS LATERAL
-        // ----------------------------------------------------
         function handleSearch() {
             let textVal = document.getElementById('searchBar').value;
             let isMsgSearch = document.getElementById('toggleSearchType').checked;
@@ -690,7 +552,7 @@
                                     <div class="msg-result-texto">${msg.texto}</div>
                                 `;
                                 div.onclick = () => {
-                                    idFocoChat = msg.msg_id; // Salva o ID da mensagem pesquisada
+                                    idFocoChat = msg.msg_id;
                                     abrirChat(msg.cliente_id, msg.cliente_nome);
                                     msgResultsBox.style.display = 'none';
                                     toggleSearch(); 
@@ -721,7 +583,6 @@
             let isMsgSearch = document.getElementById('toggleSearchType').checked;
             let textVal = isMsgSearch ? "" : document.getElementById('searchBar').value.toLowerCase();
             
-            // Pega os IDs selecionados nos filtros
             let fStatus = Array.from(document.querySelectorAll('.filtro-status:checked')).map(c => c.value);
             let fVagas = Array.from(document.querySelectorAll('.filtro-vaga:checked')).map(c => c.value);
             let fSels = Array.from(document.querySelectorAll('.filtro-sel:checked')).map(c => c.value);
@@ -731,7 +592,7 @@
                 if(!btn) return;
 
                 let nome = btn.getAttribute('data-nome').toLowerCase();
-                let status = btn.getAttribute('data-status'); // Puxa o ID do status do cliente
+                let status = btn.getAttribute('data-status');
                 let vagas = btn.getAttribute('data-vagas').split(',');
                 let selecionadoras = btn.getAttribute('data-selecionadoras').split(',');
 
@@ -740,11 +601,9 @@
                 let matchVaga = fVagas.length === 0 || fVagas.some(v => vagas.includes(v));
                 let matchSel = fSels.length === 0 || fSels.some(s => selecionadoras.includes(s));
 
-                // Só exibe se passar em todos os filtros ativos
                 li.style.display = (matchText && matchStatus && matchVaga && matchSel) ? "flex" : "none";
             });
 
-            // Esconde pastas que ficaram vazias após o filtro
             document.querySelectorAll('.pasta-container').forEach(pasta => {
                 let clientesNaPasta = pasta.querySelectorAll('li');
                 let temClienteVisivel = Array.from(clientesNaPasta).some(cli => cli.style.display !== 'none');
@@ -752,18 +611,6 @@
             });
         }
 
-        // ----------------------------------------------------
-        // CONTROLE DOS MODAIS
-        // ----------------------------------------------------
-        function toggleSearch() {
-            const c = document.getElementById('searchContainer');
-            c.style.display = (c.style.display === "none" || c.style.display === "") ? "block" : "none";
-            if(c.style.display === "block") document.getElementById('searchBar').focus();
-        }
-
-        // ----------------------------------------------------
-        // LÓGICA DE PASTAS E MEMÓRIA DE ESTADO
-        // ----------------------------------------------------
         function togglePasta(id) {
             const l = document.getElementById(id);
             const s = document.getElementById('seta-' + id);
@@ -771,50 +618,33 @@
             if (l.style.display === "none") {
                 l.style.display = "block";
                 s.innerText = "▼";
-                localStorage.setItem('estado_' + id, 'aberto'); // Salva na memória
+                localStorage.setItem('estado_' + id, 'aberto');
             } else {
                 l.style.display = "none";
                 s.innerText = "▶";
-                localStorage.setItem('estado_' + id, 'fechado'); // Salva na memória
+                localStorage.setItem('estado_' + id, 'fechado');
             }
         }
 
-        // Roda assim que a página carrega para aplicar o que estava salvo
-        document.addEventListener("DOMContentLoaded", function() {
-            document.querySelectorAll('.clientes-na-pasta').forEach(pasta => {
-                let id = pasta.id;
-                let estadoSalvo = localStorage.getItem('estado_' + id);
-                const s = document.getElementById('seta-' + id);
-                
-                // Se foi salvo como fechado, recolhe a pasta
-                if (estadoSalvo === "fechado") {
-                    pasta.style.display = "none";
-                    if (s) s.innerText = "▶";
-                } 
-                // Se não tiver nada salvo ou estiver como aberto, mantém expandido
-                else {
-                    pasta.style.display = "block";
-                    if (s) s.innerText = "▼";
-                }
-            });
-        });
-
+        // ----------------------------------------------------
+        // LÓGICA DE MODAIS DE ABERTURA E FECHAMENTO
+        // ----------------------------------------------------
         function abrirModalVagas() { document.getElementById('modalGerenciarVagas').style.display = 'flex'; }
         function fecharModalVagas() { document.getElementById('modalGerenciarVagas').style.display = 'none'; }
-        
         function abrirModalStatus() { document.getElementById('modalGerenciarStatus').style.display = 'flex'; }
         function fecharModalStatus() { document.getElementById('modalGerenciarStatus').style.display = 'none'; }
-
         function abrirModalSelecionadoras() { document.getElementById('modalGerenciarSelecionadoras').style.display = 'flex'; }
         function fecharModalSelecionadoras() { document.getElementById('modalGerenciarSelecionadoras').style.display = 'none'; }
-        
         function abrirModalCliente() { document.getElementById('modalCliente').style.display = 'flex'; }
         function fecharModalCliente() { document.getElementById('modalCliente').style.display = 'none'; }
-        
         function abrirModalPasta() { document.getElementById('modalPasta').style.display = 'flex'; }
         function fecharModalPasta() { document.getElementById('modalPasta').style.display = 'none'; }
+        function fecharModalEditar() { document.getElementById('modalEditar').style.display = 'none'; }
+        function fecharModalEditarPasta() { document.getElementById('modalEditarPasta').style.display = 'none'; }
 
-        // Preparação de Edições
+        // ----------------------------------------------------
+        // LÓGICA DE PREPARAÇÃO DE EDIÇÃO (PREENCHER DADOS)
+        // ----------------------------------------------------
         function prepararEdicao(b) {
             document.getElementById('formEditar').action = '/editar/' + b.getAttribute('data-id');
             document.getElementById('edit_nome').value = b.getAttribute('data-nome');
@@ -823,7 +653,7 @@
             const vData = b.getAttribute('data-vagas').split(',');
             const sIds = b.getAttribute('data-selecionadoras').split(',');
             
-            // 1. Desmarca e desabilita tudo primeiro (limpeza)
+            // Limpeza inicial
             document.querySelectorAll('.edit-vaga-check').forEach(c => {
                 c.checked = false;
                 let select = document.getElementById('edit_status_' + c.value);
@@ -832,23 +662,21 @@
                 if(inputTaxa) { inputTaxa.disabled = true; inputTaxa.value = ""; }
             });
             
-            // 2. Marca e preenche os dropdowns e inputs de taxa salvos
+            // Preenche os dados
             vData.forEach(item => {
                 if(!item) return;
                 const parts = item.split(':');
                 const vId = parts[0];
-                const sId = parts[1];
-                const taxaVal = parts[2];
                 
                 const checkbox = document.getElementById('edit_check_' + vId);
                 if(checkbox) {
                     checkbox.checked = true;
                     
                     const select = document.getElementById('edit_status_' + vId);
-                    if(select) { select.disabled = false; select.value = sId || ""; }
+                    if(select) { select.disabled = false; select.value = parts[1] || ""; }
                     
                     const inputTaxa = document.getElementById('edit_taxa_' + vId);
-                    if(inputTaxa) { inputTaxa.disabled = false; inputTaxa.value = taxaVal || ""; }
+                    if(inputTaxa) { inputTaxa.disabled = false; inputTaxa.value = parts[2] || ""; }
                 }
             });
             
@@ -862,18 +690,13 @@
             contatosLista.forEach(c => adicionarContatoBloco(c.nome, c.email, c.telefone));
         }
 
-        function fecharModalEditar() { document.getElementById('modalEditar').style.display = 'none'; }
-
         function prepararEdicaoVaga(id, n) { 
             document.getElementById('formEditarVaga').action = '/editar_vaga/'+id; 
             document.getElementById('edit_nome_vaga').value = n; 
             fecharModalVagas(); 
             document.getElementById('modalEditarVaga').style.display = 'flex'; 
         }
-        function fecharModalEditarVaga() { 
-            document.getElementById('modalEditarVaga').style.display = 'none'; 
-            abrirModalVagas(); 
-        }
+        function fecharModalEditarVaga() { document.getElementById('modalEditarVaga').style.display = 'none'; abrirModalVagas(); }
 
         function prepararEdicaoStatus(id, n) { 
             document.getElementById('formEditarStatus').action = '/editar_status/'+id; 
@@ -881,10 +704,7 @@
             fecharModalStatus(); 
             document.getElementById('modalEditarStatus').style.display = 'flex'; 
         }
-        function fecharModalEditarStatus() { 
-            document.getElementById('modalEditarStatus').style.display = 'none'; 
-            abrirModalStatus(); 
-        }
+        function fecharModalEditarStatus() { document.getElementById('modalEditarStatus').style.display = 'none'; abrirModalStatus(); }
 
         function prepararEdicaoSelecionadora(id, n) { 
             document.getElementById('formEditarSelecionadora').action = '/editar_selecionadora/'+id; 
@@ -892,10 +712,7 @@
             fecharModalSelecionadoras(); 
             document.getElementById('modalEditarSelecionadora').style.display = 'flex'; 
         }
-        function fecharModalEditarSelecionadora() { 
-            document.getElementById('modalEditarSelecionadora').style.display = 'none'; 
-            abrirModalSelecionadoras(); 
-        }
+        function fecharModalEditarSelecionadora() { document.getElementById('modalEditarSelecionadora').style.display = 'none'; abrirModalSelecionadoras(); }
 
         function prepararEdicaoPasta(b) { 
             document.getElementById('formEditarPasta').action = '/editar_pasta/'+b.getAttribute('data-id'); 
@@ -903,7 +720,6 @@
             document.getElementById('edit_parent_pasta').value = b.getAttribute('data-parent') || ''; 
             document.getElementById('modalEditarPasta').style.display = 'flex'; 
         }
-        function fecharModalEditarPasta() { document.getElementById('modalEditarPasta').style.display = 'none'; }
 
         function adicionarContatoBloco(nome = '', email = '', telefone = '') {
             const container = document.getElementById('contatos-container');
@@ -916,14 +732,6 @@
                 <input type="text" name="contato_telefone[]" placeholder="Telefone" value="${telefone}">
             `;
             container.appendChild(div);
-        }
-        // Fechar Modal Clicando Fora
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) {
-                event.target.style.display = 'none';
-                let containerInt = document.getElementById('interacoesDiaContainer');
-                if(containerInt) containerInt.style.display = 'none';
-            }
         }
 
         // ----------------------------------------------------
@@ -961,8 +769,8 @@
             
             const ano = dataCalendario.getFullYear();
             const mes = dataCalendario.getMonth();
-            
             const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            
             document.getElementById('mesAnoAtual').innerText = `${mesesNomes[mes]} ${ano}`;
 
             const primeiroDia = new Date(ano, mes, 1).getDay();
@@ -983,11 +791,9 @@
                 let diaStr = String(dia).padStart(2, '0');
                 let dataStr = `${ano}-${mesStr}-${diaStr}`;
                 
-                if (diasComInteracao.includes(dataStr)) {
-                    div.classList.add('has-interaction');
-                }
+                if (diasComInteracao.includes(dataStr)) div.classList.add('has-interaction');
                 
-                div.onclick = () => selecionarDiaCalendario(dataStr, dia, mesStr, ano, event);
+                div.onclick = (e) => selecionarDiaCalendario(dataStr, dia, mesStr, ano, e);
                 container.appendChild(div);
             }
         }
@@ -1014,7 +820,6 @@
                         btn.innerText = `💬 ${cli.nome}`;
                         btn.onclick = () => {
                             fecharModalCalendario();
-                            dataFocoChat = `${String(dia).padStart(2, '0')}/${mes}/${ano}`;
                             abrirChat(cli.id, cli.nome);
                         };
                         lista.appendChild(btn);
@@ -1024,7 +829,7 @@
         }
 
         // ----------------------------------------------------
-        // LÓGICA DO CHAT
+        // LÓGICA DO CHAT E ABAS
         // ----------------------------------------------------
         let clienteAtual = null;
 
@@ -1035,13 +840,11 @@
             document.getElementById('chatClienteNome').innerText = nome;
             document.getElementById('chatClienteId').value = id;
             carregarMensagens();
-            // Busca as tags do cliente para o cabeçalho
+
             fetch('/api/cliente_tags/' + id)
                 .then(res => res.json())
                 .then(data => {
                     let html = '';
-                    
-                    // Dicionário com as cores exatas que você pediu
                     const coresStatus = {
                         'SP ENVIADO': '#14D927',
                         'PROPOSTA ENVIADA': '#E0109B',
@@ -1052,12 +855,8 @@
                     };
 
                     data.vagas.forEach(v => {
-                        // Se não achar o status no dicionário ou não tiver status, usa o azul #58a6ff
                         let corHex = coresStatus[v.status] || '#58a6ff'; 
-                        
-                        // Adiciona "26" no final do HEX para dar ~15% de transparência no fundo
                         let corFundo = corHex + '26'; 
-                        
                         html += `<span class="header-tag" style="background: ${corFundo}; color: ${corHex}; border: 1px solid ${corHex};">${v.texto}</span>`;
                     });
                     
@@ -1065,7 +864,7 @@
                     document.getElementById('chatClienteTags').innerHTML = html;
                 });
 
-            trocarAbaChat('mensagens'); // Sempre abre no chat por padrão
+            trocarAbaChat('mensagens');
         }
 
         function carregarMensagens() {
@@ -1081,9 +880,8 @@
                     data.forEach(msg => {
                         let divMsg = document.createElement('div');
                         divMsg.className = 'mensagem-item' + (msg.tem_lembrete ? ' msg-lembrete' : '');
-                        divMsg.id = "msg-" + msg.id; // Dá um ID para a div na tela
+                        divMsg.id = "msg-" + msg.id; 
                         
-                        // Compara o ID (usando == para evitar erro de tipo texto/número)
                         if (idFocoChat == msg.id) {
                             elementoFoco = divMsg;
                             divMsg.style.border = '2px solid #58a6ff'; 
@@ -1118,10 +916,9 @@
                     });
                     
                     if (elementoFoco) {
-                        // Tempo para o navegador renderizar as mensagens antes de rolar
                         setTimeout(() => {
                             elementoFoco.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            idFocoChat = null; // Limpa após usar
+                            idFocoChat = null;
                         }, 200);
                     } else {
                         container.scrollTop = container.scrollHeight;
@@ -1157,6 +954,34 @@
                 }
             });
         }
+
+        function editarMensagemChat(id, btnElement) {
+            let textoTag = btnElement.closest('.mensagem-item').querySelector('.msg-texto');
+            let textoAtual = textoTag ? textoTag.innerText : '';
+            
+            let novoTexto = prompt("Edite sua mensagem:", textoAtual);
+            if(novoTexto === null || novoTexto === textoAtual) return;
+
+            let formData = new FormData();
+            formData.append('texto', novoTexto);
+
+            fetch('/editar_mensagem/' + id, { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'sucesso') carregarMensagens();
+            });
+        }
+
+        function excluirMensagemChat(id) {
+            if(!confirm("Apagar esta mensagem? O arquivo também será excluído.")) return;
+            
+            fetch('/excluir_mensagem/' + id, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'sucesso') carregarMensagens();
+            });
+        }
+
         function trocarAbaChat(aba) {
             const btnChat = document.querySelector('.tab-btn:nth-child(1)');
             const btnArquivos = document.querySelector('.tab-btn:nth-child(2)');
@@ -1193,16 +1018,13 @@
 
         function carregarListaArquivos() {
             if(!clienteAtual) return;
-
-            const container = document.getElementById('chatContatosList');
-            container.innerHTML = '<p style="text-align:center; padding:20px; color:#8b949e;">Carregando contatos...</p>';
+            const container = document.getElementById('chatFilesList');
+            container.innerHTML = '<p style="text-align:center; padding:20px; color:#8b949e;">Carregando arquivos...</p>';
             
             fetch('/get_arquivos/' + clienteAtual)
                 .then(res => res.json())
                 .then(data => {
-                    const container = document.getElementById('chatFilesList');
                     container.innerHTML = '';
-                    
                     if(data.length === 0) {
                         container.innerHTML = '<p style="text-align:center; padding:20px; color:#8b949e;">Nenhum arquivo enviado para este cliente.</p>';
                         return;
@@ -1223,14 +1045,16 @@
                     });
                 });
         }
+
         function carregarListaContatos() {
             if(!clienteAtual) return;
+            const container = document.getElementById('chatContatosList');
+            container.innerHTML = '<p style="text-align:center; padding:20px; color:#8b949e;">Carregando contatos...</p>';
+
             fetch('/get_contatos/' + clienteAtual)
                 .then(res => res.json())
                 .then(data => {
-                    const container = document.getElementById('chatContatosList');
                     container.innerHTML = '';
-                    
                     if(data.length === 0) {
                         container.innerHTML = '<p style="text-align:center; padding:20px; color:#8b949e;">Nenhum contato cadastrado.</p>';
                         return;
@@ -1239,45 +1063,14 @@
                     data.forEach(c => {
                         let div = document.createElement('div');
                         div.className = 'contato-card';
-                        // Cria o bloco com link clicável pro whatsapp e pro email
                         div.innerHTML = `
                             <div class="c-nome">👤 ${c.nome || 'Nome não informado'}</div>
                             ${c.email ? `<div class="c-info">✉️ <a href="mailto:${c.email}">${c.email}</a></div>` : ''}
                             ${c.telefone ? `<div class="c-info">📞 <a href="https://wa.me/55${c.telefone.replace(/\D/g,'')}" target="_blank">${c.telefone}</a></div>` : ''}
-                            
                         `;
                         container.appendChild(div);
                     });
                 });
-        }
-        function excluirMensagemChat(id) {
-            if(!confirm("Apagar esta mensagem? O arquivo também será excluído.")) return;
-            
-            fetch('/excluir_mensagem/' + id, { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'sucesso') carregarMensagens();
-            });
-        }
-
-        function editarMensagemChat(id, btnElement) {
-            // Puxa o texto atual da tela para colocar dentro da caixinha de edição
-            let textoTag = btnElement.closest('.mensagem-item').querySelector('.msg-texto');
-            let textoAtual = textoTag ? textoTag.innerText : '';
-            
-            let novoTexto = prompt("Edite sua mensagem:", textoAtual);
-            
-            // Se o usuário clicou em cancelar ou não mudou nada, não faz nada
-            if(novoTexto === null || novoTexto === textoAtual) return;
-
-            let formData = new FormData();
-            formData.append('texto', novoTexto);
-
-            fetch('/editar_mensagem/' + id, { method: 'POST', body: formData })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'sucesso') carregarMensagens();
-            });
         }
 
         // ----------------------------------------------------
@@ -1285,25 +1078,22 @@
         // ----------------------------------------------------
         let idLembreteAtual = null;
 
+        function abrirModalLembretes() {
+            document.getElementById('modalLembretes').style.display = 'flex';
+            carregarListaLembretes();
+        }
+        function fecharModalLembretes() { document.getElementById('modalLembretes').style.display = 'none'; }
+        function fecharModalCriarLembrete() { document.getElementById('modalCriarLembrete').style.display = 'none'; }
+
         function criarLembrete(msgId, texto) {
             document.getElementById('lembreteMsgId').value = msgId;
             document.getElementById('lembreteTexto').value = texto;
             
-            // Sugere a data e hora de hoje + 1 horinha pra facilitar
             let agora = new Date();
-            agora.setHours(agora.getHours());
-            
-            // Esse ajuste de timezone é pro HTML não puxar a hora errada
             agora.setMinutes(agora.getMinutes() - agora.getTimezoneOffset());
             
-            // Joga a hora pré-preenchida no input
             document.getElementById('lembreteDataHora').value = agora.toISOString().slice(0, 16);
-            
             document.getElementById('modalCriarLembrete').style.display = 'flex';
-        }
-
-        function fecharModalCriarLembrete() {
-            document.getElementById('modalCriarLembrete').style.display = 'none';
         }
 
         function salvarNovoLembrete(e) {
@@ -1319,7 +1109,6 @@
                     carregarListaLembretes(); 
                     alert("Lembrete agendado com sucesso!");
                 } else if (data.status === 'erro') {
-                    // Mostra o erro na tela pro usuário
                     alert(data.mensagem);
                 }
             });
@@ -1336,7 +1125,6 @@
                     let div = document.createElement('div');
                     div.className = 'contato-bloco' + (lembrete.lido ? ' lembrete-concluido' : '');
                     
-                    // Define a cor da borda baseado no estado
                     let corBorda = lembrete.lido ? 'var(--borda)' : (lembrete.vencido ? '#f85149' : '#ffd33d');
                     div.style.borderLeft = `4px solid ${corBorda}`;
                     
@@ -1372,7 +1160,6 @@
         }
 
         function marcarLembreteLido(idParam) {
-            // Pega o ID passado ou o ID do alerta flutuante
             let id = idParam || idLembreteAtual;
             if (!id) return;
 
@@ -1384,17 +1171,10 @@
                         document.getElementById('alertaLembrete').style.display = 'none';
                         idLembreteAtual = null;
                     }
-                    carregarListaLembretes(); // Atualiza a lista visualmente
+                    carregarListaLembretes(); 
                 }
             });
         }
-
-        // Quando a página carregar, verifica lembretes pendentes
-        // Também verifica sozinho a cada 5 minutos (300000ms) sem precisar dar F5
-        document.addEventListener("DOMContentLoaded", function() {
-            verificarLembretePendente();
-            setInterval(verificarLembretePendente, 300000); 
-        });
     </script>
 </body>
 </html>
