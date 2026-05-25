@@ -5,19 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Banco de Dados - Trainner RH</title>
     
-    <link rel="icon" href="{{ url_for('static', filename='logosite.png') }}" type="image/png">
+    <link rel="icon" href="{{ url_for('static', filename='img/logosite.png') }}" type="image/png">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+
+    <div id="alertaLembrete" style="display: none; position: fixed; top: 20px; right: 20px; background: #ffd33d; color: #000; padding: 15px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); max-width: 300px;">
+        <h4 style="margin-bottom: 8px; font-size: 15px;">⏰ Lembrete!</h4>
+        <p style="font-size: 11px; color: #58a6ff; font-weight: bold; margin-bottom: 2px;" id="empresaAlertaLembrete"></p>
+        <p id="textoAlertaLembrete" style="font-size: 13px; margin-bottom: 12px; word-wrap: break-word;"></p>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="ignorarLembrete()" style="background: #161b22; color: #fff; border: 1px solid #30363d; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;">Ignorar</button>
+            <button onclick="marcarLembreteLido()" style="background: #238636; color: #fff; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;">✔ Lido</button>
+        </div>
+    </div>
 
     <!-- ================= SIDEBAR (LATERAL) ================= -->
     <div class="sidebar">
         <h2>Banco Trainner RH</h2>
         <br>
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo_clara.png') }}" class="logo-clara" width="180" alt="Logo Trainner RH">
+            <img src="{{ url_for('static', filename='img/logo_clara.png') }}" class="logo-clara" width="180" alt="Logo Trainner RH">
             
-            <img src="{{ url_for('static', filename='logo_escura.png') }}" class="logo-escura" width="180" alt="Logo Trainner RH">
+            <img src="{{ url_for('static', filename='img/logo_escura.png') }}" class="logo-escura" width="180" alt="Logo Trainner RH">
         </div>
 
         <!-- Barra de Pesquisa com Toggle de Mensagens -->
@@ -113,7 +124,13 @@
                     {% for cliente in clientes_por_pasta[pasta[0]] %}
                     <li>
                         <div class="cliente-info" onclick="abrirChat('{{ cliente[0] }}', '{{ cliente[1]|e }}')">
-                            <span class="status-dot dot-baixa"></span>
+                            {% if cliente[0] in clientes_atrasados %}
+                                <span class="status-dot dot-alta" title="Possui lembrete atrasado!"></span>
+                            {% elif cliente[0] in clientes_pendentes %}
+                                <span class="status-dot dot-media" title="Lembrete agendado"></span>
+                            {% else %}
+                                <span class="status-dot dot-baixa"></span>
+                            {% endif %}
                             <span class="cliente-link">{{ cliente[1] }}</span>
                         </div>
                         <div class="acoes">
@@ -138,7 +155,13 @@
                             {% for cliente in clientes_por_pasta[sub[0]] %}
                             <li>
                                 <div class="cliente-info" onclick="abrirChat('{{ cliente[0] }}', '{{ cliente[1]|e }}')">
-                                    <span class="status-dot dot-baixa"></span>
+                                    {% if cliente[0] in clientes_atrasados %}
+                                        <span class="status-dot dot-alta" title="Possui lembrete atrasado!"></span>
+                                    {% elif cliente[0] in clientes_pendentes %}
+                                        <span class="status-dot dot-media" title="Lembrete agendado"></span>
+                                    {% else %}
+                                        <span class="status-dot dot-baixa"></span>
+                                    {% endif %}
                                     <span class="cliente-link">{{ cliente[1] }}</span>
                                 </div>
                                 <div class="acoes">
@@ -161,7 +184,13 @@
                 {% for cliente in clientes_sem_pasta %}
                 <li>
                     <div class="cliente-info" onclick="abrirChat('{{ cliente[0] }}', '{{ cliente[1]|e }}')">
-                        <span class="status-dot dot-baixa"></span>
+                        {% if cliente[0] in clientes_atrasados %}
+                            <span class="status-dot dot-alta" title="Possui lembrete atrasado!"></span>
+                        {% elif cliente[0] in clientes_pendentes %}
+                            <span class="status-dot dot-media" title="Lembrete agendado"></span>
+                        {% else %}
+                            <span class="status-dot dot-baixa"></span>
+                        {% endif %}
                         <span class="cliente-link">{{ cliente[1] }}</span>
                     </div>
                     <div class="acoes">
@@ -192,8 +221,12 @@
             
             <button class="btn-calendario" style="margin-left: 10px;" onclick="toggleTheme()" title="Trocar Tema">🌓</button>
             
-            <a href="/exportar_relatorio" class="btn-calendario" style="text-decoration: none; margin-left: 10px; background-color: #238636; border-color: #238636;">📊</a>
+            <button class="btn-calendario" style="margin-left: 10px;" onclick="abrirModalLembretes()" title="Lembretes">⏰</button>
+
+            <a href="/exportar_relatorio" class="btn-calendario" style="text-decoration: none; margin-left: 10px;">📊</a>
         </div>
+
+        
         
         <!-- Estado Vazio -->
         <div class="empty-state" id="emptyState">
@@ -256,20 +289,25 @@
                     {% endfor %}
                 </select>
 
-                <p class="section-label">Status:</p>
-                <div class="status-options">
-                    {% for st in status_lista %}
-                        <label class="status-item">
-                            <input type="radio" name="status_id" value="{{ st[0] }}" class="edit-st-radio">
-                            <span>{{ st[1] }}</span>
-                        </label>
-                    {% endfor %}
-                </div>
-                
-                <p class="section-label">Vagas:</p>
-                <div class="vagas-tag-grid">
+                <p class="section-label">Selecione as Vagas e seus respectivos Status:</p>
+                <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--borda); padding: 10px; border-radius: 8px; background: var(--bg-fundo); margin-bottom: 10px;">
                     {% for vaga in vagas %}
-                        <label class="tag-check"><input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}"><span class="tag-content">{{ vaga[1] }}</span></label>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; flex-grow: 1;">
+                                <input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}" onchange="document.getElementById('status_vaga_{{ vaga[0] }}').disabled = !this.checked; document.getElementById('taxa_vaga_{{ vaga[0] }}').disabled = !this.checked;">
+                                <span>{{ vaga[1] }}</span>
+                            </label>
+                            
+                            <div style="display: flex; gap: 5px;">
+                                <select name="status_vaga_{{ vaga[0] }}" id="status_vaga_{{ vaga[0] }}" class="select-pasta" style="width: 140px; margin: 0; padding: 5px;" disabled>
+                                    <option value="">Sem Status</option>
+                                    {% for st in status_lista %}
+                                        <option value="{{ st[0] }}">{{ st[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="number" name="taxa_vaga_{{ vaga[0] }}" id="taxa_vaga_{{ vaga[0] }}" min="0" max="999.999" step="0.001" placeholder="Taxa %" class="select-pasta" style="width: 80px; margin: 0; padding: 5px;" disabled>
+                            </div>
+                        </div>
                     {% endfor %}
                 </div>
                 
@@ -309,20 +347,25 @@
                                 {% endfor %}
                             </select>
 
-                            <p class="section-label">Status:</p>
-                            <div class="status-options">
-                                {% for st in status_lista %}
-                                    <label class="status-item">
-                                        <input type="radio" name="status_id" value="{{ st[0] }}" class="edit-st-radio">
-                                        <span>{{ st[1] }}</span>
-                                    </label>
-                                {% endfor %}
-                            </div>
-                            
-                            <p class="section-label">Vagas:</p>
-                            <div class="vagas-tag-grid">
+                            <p class="section-label">Vagas e seus Status:</p>
+                            <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--borda); padding: 10px; border-radius: 8px; background: var(--bg-fundo); margin-bottom: 10px;">
                                 {% for vaga in vagas %}
-                                    <label class="tag-check"><input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}" class="edit-vaga-check"><span class="tag-content">{{ vaga[1] }}</span></label>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px;">
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; flex-grow: 1;">
+                                            <input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}" class="edit-vaga-check" id="edit_check_{{ vaga[0] }}" onchange="document.getElementById('edit_status_{{ vaga[0] }}').disabled = !this.checked; document.getElementById('edit_taxa_{{ vaga[0] }}').disabled = !this.checked;">
+                                            <span>{{ vaga[1] }}</span>
+                                        </label>
+                                        
+                                        <div style="display: flex; gap: 5px;">
+                                            <select name="status_vaga_{{ vaga[0] }}" id="edit_status_{{ vaga[0] }}" class="select-pasta edit-status-select" style="width: 140px; margin: 0; padding: 5px;" disabled>
+                                                <option value="">Sem Status</option>
+                                                {% for st in status_lista %}
+                                                    <option value="{{ st[0] }}">{{ st[1] }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <input type="number" name="taxa_vaga_{{ vaga[0] }}" id="edit_taxa_{{ vaga[0] }}" min="0" max="999.999" step="0.001" placeholder="Taxa %" class="select-pasta" style="width: 80px; margin: 0; padding: 5px;" disabled>
+                                        </div>
+                                    </div>
                                 {% endfor %}
                             </div>
                             
@@ -547,6 +590,38 @@
         </div>
     </div>
 
+    <!-- Modal: Lembretes -->
+    <div id="modalLembretes" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Meus Lembretes</h3>
+                <span class="close-modal" onclick="fecharModalLembretes()">×</span>
+            </div>
+            <div id="listaLembretes" style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
+                </div>
+        </div>
+    </div>
+
+    <div id="modalCriarLembrete" class="modal">
+        <div class="modal-content" style="max-width: 350px;">
+            <div class="modal-header">
+                <h3>Agendar Lembrete</h3>
+                <span class="close-modal" onclick="fecharModalCriarLembrete()">×</span>
+            </div>
+            <form id="formCriarLembrete" onsubmit="salvarNovoLembrete(event)">
+                <input type="hidden" id="lembreteMsgId" name="mensagem_id">
+                <input type="hidden" id="lembreteTexto" name="texto">
+                
+                <p class="section-label">Quando você quer ser lembrado?</p>
+                <input type="datetime-local" id="lembreteDataHora" name="data_alerta" required style="width: 100%; padding: 10px; background: var(--bg-input); border: 1px solid var(--borda); color: var(--texto-principal); border-radius: 6px; outline: none; margin-bottom: 15px; color-scheme: dark;">
+                
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ================= JAVASCRIPT ================= -->
     <script>
         // ----------------------------------------------------
@@ -556,6 +631,24 @@
             document.body.classList.toggle('dark-mode');
             const temaAtual = document.body.classList.contains('dark-mode') ? 'escuro' : 'claro';
             localStorage.setItem('tema_preferido', temaAtual);
+        }
+
+        // Verifica a memória quando a página carrega
+        document.addEventListener("DOMContentLoaded", function() {
+            if (localStorage.getItem('tema_preferido') === 'escuro') {
+                document.body.classList.add('dark-mode');
+            }
+        });
+        // ----------------------------------------------------
+        // LEMBRETES
+        // ----------------------------------------------------
+        function abrirModalLembretes() {
+            document.getElementById('modalLembretes').style.display = 'flex';
+            carregarListaLembretes(); // Vamos criar essa função no próximo passo
+        }
+
+        function fecharModalLembretes() {
+            document.getElementById('modalLembretes').style.display = 'none';
         }
 
         // Verifica a memória quando a página carrega
@@ -726,16 +819,39 @@
             document.getElementById('formEditar').action = '/editar/' + b.getAttribute('data-id');
             document.getElementById('edit_nome').value = b.getAttribute('data-nome');
             document.getElementById('edit_pasta').value = b.getAttribute('data-pasta');
-
-            const stId = b.getAttribute('data-status');
-            document.querySelectorAll('#formEditar .edit-st-radio').forEach(r => {
-                r.checked = (r.value === stId);
-            });
             
-            const vIds = b.getAttribute('data-vagas').split(',');
+            const vData = b.getAttribute('data-vagas').split(',');
             const sIds = b.getAttribute('data-selecionadoras').split(',');
             
-            document.querySelectorAll('.edit-vaga-check').forEach(c => c.checked = vIds.includes(c.value));
+            // 1. Desmarca e desabilita tudo primeiro (limpeza)
+            document.querySelectorAll('.edit-vaga-check').forEach(c => {
+                c.checked = false;
+                let select = document.getElementById('edit_status_' + c.value);
+                let inputTaxa = document.getElementById('edit_taxa_' + c.value);
+                if(select) { select.disabled = true; select.value = ""; }
+                if(inputTaxa) { inputTaxa.disabled = true; inputTaxa.value = ""; }
+            });
+            
+            // 2. Marca e preenche os dropdowns e inputs de taxa salvos
+            vData.forEach(item => {
+                if(!item) return;
+                const parts = item.split(':');
+                const vId = parts[0];
+                const sId = parts[1];
+                const taxaVal = parts[2];
+                
+                const checkbox = document.getElementById('edit_check_' + vId);
+                if(checkbox) {
+                    checkbox.checked = true;
+                    
+                    const select = document.getElementById('edit_status_' + vId);
+                    if(select) { select.disabled = false; select.value = sId || ""; }
+                    
+                    const inputTaxa = document.getElementById('edit_taxa_' + vId);
+                    if(inputTaxa) { inputTaxa.disabled = false; inputTaxa.value = taxaVal || ""; }
+                }
+            });
+            
             document.querySelectorAll('.edit-sel-check').forEach(c => c.checked = sIds.includes(c.value));
             
             document.getElementById('modalEditar').style.display = 'flex';
@@ -745,6 +861,7 @@
             const contatosLista = JSON.parse(b.getAttribute('data-contatos') || '[]');
             contatosLista.forEach(c => adicionarContatoBloco(c.nome, c.email, c.telefone));
         }
+
         function fecharModalEditar() { document.getElementById('modalEditar').style.display = 'none'; }
 
         function prepararEdicaoVaga(id, n) { 
@@ -923,8 +1040,27 @@
                 .then(res => res.json())
                 .then(data => {
                     let html = '';
-                    if (data.status) html += `<span class="header-tag tag-status">${data.status}</span>`;
-                    data.vagas.forEach(v => html += `<span class="header-tag tag-vaga">${v}</span>`);
+                    
+                    // Dicionário com as cores exatas que você pediu
+                    const coresStatus = {
+                        'SP ENVIADO': '#14D927',
+                        'PROPOSTA ENVIADA': '#E0109B',
+                        'FATURAMENTO ENVIADO': '#AD0505',
+                        'VAGA ABERTA': '#A6A128',
+                        'VAGA FECHADA': '#551199',
+                        'VAGA CANCELADA': '#4A4749'
+                    };
+
+                    data.vagas.forEach(v => {
+                        // Se não achar o status no dicionário ou não tiver status, usa o azul #58a6ff
+                        let corHex = coresStatus[v.status] || '#58a6ff'; 
+                        
+                        // Adiciona "26" no final do HEX para dar ~15% de transparência no fundo
+                        let corFundo = corHex + '26'; 
+                        
+                        html += `<span class="header-tag" style="background: ${corFundo}; color: ${corHex}; border: 1px solid ${corHex};">${v.texto}</span>`;
+                    });
+                    
                     data.selecionadoras.forEach(s => html += `<span class="header-tag tag-sel">${s}</span>`);
                     document.getElementById('chatClienteTags').innerHTML = html;
                 });
@@ -944,7 +1080,7 @@
 
                     data.forEach(msg => {
                         let divMsg = document.createElement('div');
-                        divMsg.className = 'mensagem-item';
+                        divMsg.className = 'mensagem-item' + (msg.tem_lembrete ? ' msg-lembrete' : '');
                         divMsg.id = "msg-" + msg.id; // Dá um ID para a div na tela
                         
                         // Compara o ID (usando == para evitar erro de tipo texto/número)
@@ -954,9 +1090,12 @@
                             divMsg.style.boxShadow = '0 0 15px rgba(88, 166, 255, 0.4)';
                         }
 
+                        let textoSeguro = msg.texto ? msg.texto.replace(/'/g, "\\'") : "Arquivo anexado";
+
                         let conteudoHTML = `
                             <div class="msg-header" style="display: flex; justify-content: space-between; width: 100%;">
                                 <div class="msg-acoes">
+                                    <span title="Criar Lembrete" onclick="criarLembrete(${msg.id}, '${textoSeguro}')">⏰</span>
                                     <span title="Editar" onclick="editarMensagemChat(${msg.id}, this)">✎</span>
                                     <span title="Excluir" onclick="excluirMensagemChat(${msg.id})">×</span>
                                 </div>
@@ -1140,6 +1279,122 @@
                 if(data.status === 'sucesso') carregarMensagens();
             });
         }
+
+        // ----------------------------------------------------
+        // LÓGICA DE LEMBRETES
+        // ----------------------------------------------------
+        let idLembreteAtual = null;
+
+        function criarLembrete(msgId, texto) {
+            document.getElementById('lembreteMsgId').value = msgId;
+            document.getElementById('lembreteTexto').value = texto;
+            
+            // Sugere a data e hora de hoje + 1 horinha pra facilitar
+            let agora = new Date();
+            agora.setHours(agora.getHours());
+            
+            // Esse ajuste de timezone é pro HTML não puxar a hora errada
+            agora.setMinutes(agora.getMinutes() - agora.getTimezoneOffset());
+            
+            // Joga a hora pré-preenchida no input
+            document.getElementById('lembreteDataHora').value = agora.toISOString().slice(0, 16);
+            
+            document.getElementById('modalCriarLembrete').style.display = 'flex';
+        }
+
+        function fecharModalCriarLembrete() {
+            document.getElementById('modalCriarLembrete').style.display = 'none';
+        }
+
+        function salvarNovoLembrete(e) {
+            e.preventDefault();
+            const form = document.getElementById('formCriarLembrete');
+            const formData = new FormData(form);
+
+            fetch('/api/criar_lembrete', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'sucesso') {
+                    fecharModalCriarLembrete();
+                    carregarListaLembretes(); 
+                    alert("Lembrete agendado com sucesso!");
+                } else if (data.status === 'erro') {
+                    // Mostra o erro na tela pro usuário
+                    alert(data.mensagem);
+                }
+            });
+        }
+
+        function carregarListaLembretes() {
+            fetch('/api/lista_lembretes')
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById('listaLembretes');
+                container.innerHTML = '';
+                
+                data.forEach(lembrete => {
+                    let div = document.createElement('div');
+                    div.className = 'contato-bloco' + (lembrete.lido ? ' lembrete-concluido' : '');
+                    
+                    // Define a cor da borda baseado no estado
+                    let corBorda = lembrete.lido ? 'var(--borda)' : (lembrete.vencido ? '#f85149' : '#ffd33d');
+                    div.style.borderLeft = `4px solid ${corBorda}`;
+                    
+                    div.innerHTML = `
+                        <div style="font-size: 10px; color: #58a6ff; font-weight: bold;">🏢 ${lembrete.empresa}</div>
+                        <div style="font-size: 13px; color: var(--texto-principal); margin-bottom: 5px;">${lembrete.texto}</div>
+                        <div style="font-size: 11px; color: var(--texto-secundario); margin-bottom: 10px;">
+                            ⏰ ${lembrete.data} ${lembrete.lido ? '(Concluído)' : ''}
+                        </div>
+                        ${!lembrete.lido ? `<button onclick="marcarLembreteLido(${lembrete.id})" class="btn-yellow" style="padding: 5px 10px; font-size: 11px;">✔ Concluir</button>` : ''}
+                    `;
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function verificarLembretePendente() {
+            fetch('/api/lembrete_pendente')
+            .then(res => res.json())
+            .then(lembrete => {
+                if (lembrete) {
+                    idLembreteAtual = lembrete.id;
+                    document.getElementById('empresaAlertaLembrete').innerText = "🏢 " + lembrete.empresa;
+                    document.getElementById('textoAlertaLembrete').innerText = lembrete.texto;
+                    document.getElementById('alertaLembrete').style.display = 'block';
+                }
+            });
+        }
+
+        function ignorarLembrete() {
+            document.getElementById('alertaLembrete').style.display = 'none';
+            idLembreteAtual = null;
+        }
+
+        function marcarLembreteLido(idParam) {
+            // Pega o ID passado ou o ID do alerta flutuante
+            let id = idParam || idLembreteAtual;
+            if (!id) return;
+
+            fetch('/api/marcar_lembrete_lido/' + id, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'sucesso') {
+                    if (idLembreteAtual === id) {
+                        document.getElementById('alertaLembrete').style.display = 'none';
+                        idLembreteAtual = null;
+                    }
+                    carregarListaLembretes(); // Atualiza a lista visualmente
+                }
+            });
+        }
+
+        // Quando a página carregar, verifica lembretes pendentes
+        // Também verifica sozinho a cada 5 minutos (300000ms) sem precisar dar F5
+        document.addEventListener("DOMContentLoaded", function() {
+            verificarLembretePendente();
+            setInterval(verificarLembretePendente, 300000); 
+        });
     </script>
 </body>
 </html>

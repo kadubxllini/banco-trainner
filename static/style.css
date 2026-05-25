@@ -1145,8 +1145,7 @@ input:checked + .slider:before { transform: translateX(16px); }
 .chat-tags-container { display: flex; gap: 5px; flex-wrap: wrap; }
 .header-tag { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
 
-.tag-status { background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid #58a6ff; }
-.tag-vaga { background: rgba(46, 160, 67, 0.15); color: #3fb950; border: 1px solid #3fb950; }
+.tag-vaga { background: rgb(48, 111, 170); color: #58a6ff; border: 1px solid #58a6ff; }
 .tag-sel { background: rgba(210, 153, 34, 0.15); color: #e3b341; border: 1px solid #e3b341; }
 
 /* --- ABA DE CONTATOS --- */
@@ -1165,3 +1164,18 @@ input:checked + .slider:before { transform: translateX(16px); }
 .c-info { font-size: 13px; color: var(--texto-secundario); margin-bottom: 5px; }
 .c-info a { color: #58a6ff; text-decoration: none; }
 .c-info a:hover { text-decoration: underline; }
+
+/* Bolinha Amarela */
+.dot-pendente { background-color: #ffd33d; }
+
+/* Borda amarela nas mensagens que são lembretes */
+.mensagem-item.msg-lembrete {
+    border: 2px solid #ffd33d;
+}
+
+/* Estilo para lembrete concluído no histórico */
+.lembrete-concluido {
+    opacity: 0.6;
+    background: var(--bg-hover) !important;
+    text-decoration: line-through;
+}

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, jsonify
 from werkzeug.utils import secure_filename
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 import sqlite3
 import os
 import logging
@@ -41,21 +41,30 @@ def criar_tabelas():
         'CREATE TABLE IF NOT EXISTS Vaga (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL)',
         'CREATE TABLE IF NOT EXISTS Status (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL)',
         'CREATE TABLE IF NOT EXISTS Selecionadora (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL)',
+        '''CREATE TABLE IF NOT EXISTS Lembrete (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mensagem_id INTEGER,
+            texto TEXT NOT NULL,
+            data_criacao DATETIME DEFAULT (datetime('now', 'localtime')),
+            data_alerta DATETIME NOT NULL,
+            lido INTEGER DEFAULT 0,
+            FOREIGN KEY (mensagem_id) REFERENCES Mensagem(id) ON DELETE CASCADE
+        )''',
         '''CREATE TABLE IF NOT EXISTS Cliente (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             nome TEXT NOT NULL, 
             pasta_id INTEGER,
-            status_id INTEGER,
             urgencia TEXT NOT NULL DEFAULT 'BAIXA',
-            FOREIGN KEY (pasta_id) REFERENCES Pasta(id),
-            FOREIGN KEY (status_id) REFERENCES Status(id)
+            FOREIGN KEY (pasta_id) REFERENCES Pasta(id)
         )''',
         '''CREATE TABLE IF NOT EXISTS Cliente_Vaga (
             cliente_id INTEGER,
             vaga_id INTEGER,
+            status_id INTEGER,
             PRIMARY KEY (cliente_id, vaga_id),
             FOREIGN KEY (cliente_id) REFERENCES Cliente(id) ON DELETE CASCADE,
-            FOREIGN KEY (vaga_id) REFERENCES Vaga(id) ON DELETE CASCADE
+            FOREIGN KEY (vaga_id) REFERENCES Vaga(id) ON DELETE CASCADE,
+            FOREIGN KEY (status_id) REFERENCES Status(id)
         )''',
         '''CREATE TABLE IF NOT EXISTS Cliente_Selecionadora (
             cliente_id INTEGER,
@@ -94,6 +103,15 @@ def criar_tabelas():
     # Atualiza tabela antiga de Pasta para aceitar subpastas
     try:
         conn.execute('ALTER TABLE Pasta ADD COLUMN parent_id INTEGER REFERENCES Pasta(id) ON DELETE CASCADE')
+    except sqlite3.OperationalError:
+        pass
+    # Atualiza a tabela Cliente_Vaga antiga para aceitar o status por vaga
+    try:
+        conn.execute('ALTER TABLE Cliente_Vaga ADD COLUMN status_id INTEGER REFERENCES Status(id)')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute('ALTER TABLE Cliente_Vaga ADD COLUMN taxa REAL')
     except sqlite3.OperationalError:
         pass
         
@@ -148,8 +166,8 @@ def index():
     spe = defaultdict(list)
     cpe = defaultdict(list)
     
-    for e_id, v_id in conn.execute('SELECT cliente_id, vaga_id FROM Cliente_Vaga').fetchall():
-        vpe[e_id].append(v_id)
+    for e_id, v_id, st_id, taxa in conn.execute('SELECT cliente_id, vaga_id, status_id, taxa FROM Cliente_Vaga').fetchall():
+        vpe[e_id].append(f"{v_id}:{st_id or ''}:{taxa or ''}")
 
     for e_id, s_id in conn.execute('SELECT cliente_id, selecionadora_id FROM Cliente_Selecionadora').fetchall():
         spe[e_id].append(s_id)
@@ -157,6 +175,19 @@ def index():
     contatos_bd = conn.execute('SELECT cliente_id, nome, email, telefone FROM Contato').fetchall()
     for c in contatos_bd:
         cpe[c[0]].append({'nome': c[1] or '', 'email': c[2] or '', 'telefone': c[3] or ''})
+
+    atrasados_db = conn.execute('''
+        SELECT DISTINCT m.cliente_id FROM Lembrete l
+        JOIN Mensagem m ON l.mensagem_id = m.id
+        WHERE l.lido = 0 AND l.data_alerta <= datetime('now', 'localtime')
+    ''').fetchall()
+    atrasados = [c[0] for c in atrasados_db]
+    pendentes_db = conn.execute('''
+        SELECT DISTINCT m.cliente_id FROM Lembrete l
+        JOIN Mensagem m ON l.mensagem_id = m.id
+        WHERE l.lido = 0 AND l.data_alerta > datetime('now', 'localtime')
+    ''').fetchall()
+    pendentes = [c[0] for c in pendentes_db]
 
     conn.close()
     
@@ -172,7 +203,9 @@ def index():
         selecionadoras=selecionadoras,
         vpe=vpe,
         spe=spe,
-        cpe=cpe
+        cpe=cpe,
+        clientes_atrasados=atrasados,
+        clientes_pendentes=pendentes
     )
 
 # --- ROTAS DO CALENDÁRIO ---
@@ -202,13 +235,12 @@ def get_mensagens(cliente_id):
     conn = conectar()
     # Adicionamos o 'id' no SELECT
     mensagens = conn.execute('''
-        SELECT id, texto, arquivo_path, tipo, strftime('%d/%m/%Y %H:%M', data_hora) 
-        FROM Mensagem WHERE cliente_id = ? ORDER BY data_hora ASC
+        SELECT m.id, m.texto, m.arquivo_path, m.tipo, strftime('%d/%m/%Y %H:%M', m.data_hora),
+               (SELECT COUNT(*) FROM Lembrete WHERE mensagem_id = m.id) as tem_lembrete
+        FROM Mensagem m WHERE cliente_id = ? ORDER BY data_hora ASC
     ''', (cliente_id,)).fetchall()
     conn.close()
-    
-    # Adicionamos 'id': m[0] no retorno
-    return jsonify([{'id': m[0], 'texto': m[1], 'path': m[2], 'tipo': m[3], 'data': m[4]} for m in mensagens])
+    return jsonify([{'id': m[0], 'texto': m[1], 'path': m[2], 'tipo': m[3], 'data': m[4], 'tem_lembrete': m[5] > 0} for m in mensagens])
 
 @app.route('/get_arquivos/<int:cliente_id>')
 def get_arquivos(cliente_id):
@@ -302,25 +334,104 @@ def excluir_mensagem(id):
 @app.route('/exportar_relatorio')
 def exportar_relatorio():
     conn = conectar()
-    query = '''
-        SELECT e.nome, e.urgencia, p.nome as pasta,
-        (SELECT GROUP_CONCAT(v.nome, ', ') FROM Vaga v JOIN Cliente_Vaga ev ON v.id = ev.vaga_id WHERE ev.cliente_id = e.id) as vagas,
-        (SELECT GROUP_CONCAT(s.nome, ', ') FROM Selecionadora s JOIN Cliente_Selecionadora es ON s.id = es.selecionadora_id WHERE es.cliente_id = e.id) as selecionadoras
+
+    # 1. Pastas (Ordenadas como no site: mais novas no topo)
+    pastas_db = conn.execute('SELECT id, nome, parent_id FROM Pasta ORDER BY id DESC').fetchall()
+    pastas_dict = {p[0]: {'nome': p[1], 'parent_id': p[2]} for p in pastas_db}
+
+    def obter_nome_pasta(pasta_id):
+        if not pasta_id:
+            return "Sem Pasta"
+        pasta = pastas_dict.get(pasta_id)
+        if not pasta:
+            return "Desconhecida"
+        if pasta['parent_id']:
+            parent_nome = pastas_dict[pasta['parent_id']]['nome']
+            return f"{parent_nome} > {pasta['nome']}"
+        return pasta['nome']
+
+    # 2. Clientes (Ordenados como no site: mais novos no topo)
+    clientes_db = conn.execute('''
+        SELECT e.id, e.nome, s.nome as status, e.pasta_id
         FROM Cliente e
-        LEFT JOIN Pasta p ON e.pasta_id = p.id
-        ORDER BY e.nome ASC
-    '''
-    dados = conn.execute(query).fetchall()
+        LEFT JOIN Status s ON e.status_id = s.id
+        ORDER BY e.id DESC
+    ''').fetchall()
+
+    # 3. Puxa os relacionamentos
+    vagas_por_cliente = defaultdict(list)
+    for c_id, v_nome in conn.execute('SELECT ev.cliente_id, v.nome FROM Cliente_Vaga ev JOIN Vaga v ON ev.vaga_id = v.id').fetchall():
+        vagas_por_cliente[c_id].append(v_nome)
+
+    sels_por_cliente = defaultdict(list)
+    for c_id, s_nome in conn.execute('SELECT es.cliente_id, s.nome FROM Cliente_Selecionadora es JOIN Selecionadora s ON es.selecionadora_id = s.id').fetchall():
+        sels_por_cliente[c_id].append(s_nome)
+
+    contatos_por_cliente = defaultdict(list)
+    for c in conn.execute('SELECT cliente_id, nome, email, telefone FROM Contato').fetchall():
+        contatos_por_cliente[c[0]].append({
+            'nome': c[1] if c[1] and c[1].strip() else 'Não informado',
+            'email': c[2] if c[2] and c[2].strip() else 'Não informado',
+            'telefone': c[3] if c[3] and c[3].strip() else 'Não informado'
+        })
+
+    # 4. Replica a ORDEM EXATA do site (Pastas Principais -> Subpastas -> Sem Pasta)
+    pastas_principais = [p for p in pastas_db if p[2] is None]
+    subpastas = defaultdict(list)
+    for p in pastas_db:
+        if p[2] is not None:
+            subpastas[p[2]].append(p)
+
+    clientes_por_pasta = defaultdict(list)
+    clientes_sem_pasta = []
+    for cli in clientes_db:
+        if cli[3]:
+            clientes_por_pasta[cli[3]].append(cli)
+        else:
+            clientes_sem_pasta.append(cli)
+
+    # Monta a lista final exatamente como aparece na tela
+    clientes_ordenados = []
+    for pasta in pastas_principais:
+        p_id = pasta[0]
+        clientes_ordenados.extend(clientes_por_pasta.get(p_id, []))
+        for sub in subpastas.get(p_id, []):
+            sub_id = sub[0]
+            clientes_ordenados.extend(clientes_por_pasta.get(sub_id, []))
+            
+    clientes_ordenados.extend(clientes_sem_pasta)
+
     conn.close()
 
+    # 5. Monta o arquivo CSV
     output = io.StringIO()
-    writer = csv.writer(output, delimiter=';') # Ponto e vírgula para o Excel BR
-    writer.writerow(['Cliente', 'Urgencia', 'Pasta', 'Vagas', 'Selecionadoras'])
-    for linha in dados:
-        writer.writerow(linha)
+    writer = csv.writer(output, delimiter=';') 
+    
+    # Cabeçalho
+    writer.writerow(['PASTA', 'EMPRESA', 'STATUS', 'VAGAS', 'SELECIONADORAS', 'CONTATOS-NOME', 'CONTATOS-EMAIL', 'CONTATOS-TELEFONE'])
+
+    for cli in clientes_ordenados:
+        c_id, nome_empresa, status, pasta_id = cli
+        nome_pasta = obter_nome_pasta(pasta_id)
+
+        lista_contatos = contatos_por_cliente[c_id]
+        str_nomes = ", ".join([c['nome'] for c in lista_contatos])
+        str_emails = ", ".join([c['email'] for c in lista_contatos])
+        str_tels = ", ".join([c['telefone'] for c in lista_contatos])
+
+        writer.writerow([
+            nome_pasta,
+            nome_empresa,
+            status or "",
+            ", ".join(vagas_por_cliente[c_id]),
+            ", ".join(sels_por_cliente[c_id]),
+            str_nomes,
+            str_emails,
+            str_tels
+        ])
     
     output.seek(0)
-    conteudo = "\ufeff" + output.getvalue() # Adiciona o BOM para caracteres especiais
+    conteudo = "\ufeff" + output.getvalue()
     
     response = make_response(conteudo)
     response.headers["Content-Disposition"] = f"attachment; filename=relatorio_clientes_{datetime.now().strftime('%d_%m_%Y')}.csv"
@@ -332,26 +443,31 @@ def exportar_relatorio():
 def salvar():
     nome = request.form.get('nome_cliente', '').strip()
     p_id = request.form.get('pasta_id') or None
-    st_id = request.form.get('status_id') or None
     urgencia = 'BAIXA'
     v_ids = request.form.getlist('vagas_ids')
     s_ids = request.form.getlist('selecionadoras_ids')
     
-    if nome and urgencia:
+    if nome:
         conn = conectar()
-        
-        # Trava: Verifica se já existe um cliente com esse exato nome
         existe = conn.execute('SELECT id FROM Cliente WHERE LOWER(nome) = LOWER(?)', (nome,)).fetchone()
         if existe:
             conn.close()
-            return redirect('/') # Cancela o cadastro se o nome já existir
+            return redirect('/') 
             
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO Cliente (nome, pasta_id, status_id, urgencia) VALUES (?, ?, ?, ?)', (nome, p_id, st_id, urgencia))
+        cursor.execute('INSERT INTO Cliente (nome, pasta_id, urgencia) VALUES (?, ?, ?)', (nome, p_id, urgencia))
         e_id = cursor.lastrowid
         
-        # Inserção em massa
-        if v_ids: cursor.executemany('INSERT INTO Cliente_Vaga (cliente_id, vaga_id) VALUES (?, ?)', [(e_id, v) for v in v_ids])
+        # Inserção das vagas pegando o status de cada uma
+        if v_ids: 
+            vagas_dados = []
+            for v_id in v_ids:
+                st_id = request.form.get(f'status_vaga_{v_id}') or None
+                taxa = request.form.get(f'taxa_vaga_{v_id}') or None
+                if taxa == '': taxa = None
+                vagas_dados.append((e_id, v_id, st_id, taxa))
+            cursor.executemany('INSERT INTO Cliente_Vaga (cliente_id, vaga_id, status_id, taxa) VALUES (?, ?, ?, ?)', vagas_dados)
+            
         if s_ids: cursor.executemany('INSERT INTO Cliente_Selecionadora (cliente_id, selecionadora_id) VALUES (?, ?)', [(e_id, s) for s in s_ids])
             
         conn.commit()
@@ -362,7 +478,6 @@ def salvar():
 def editar(id):
     nome = request.form.get('nome_cliente', '').strip()
     p_id = request.form.get('pasta_id') or None
-    st_id = request.form.get('status_id') or None
     urgencia = 'BAIXA'
     v_ids = request.form.getlist('vagas_ids')
     s_ids = request.form.getlist('selecionadoras_ids')
@@ -371,24 +486,29 @@ def editar(id):
     tels_contato = request.form.getlist('contato_telefone[]')
     
     conn = conectar()
-    
-    # Trava: Verifica se já existe OUTRO cliente usando o nome que você tentou colocar
     existe = conn.execute('SELECT id FROM Cliente WHERE LOWER(nome) = LOWER(?) AND id != ?', (nome, id)).fetchone()
     if existe:
         conn.close()
-        return redirect('/') # Cancela a edição se o nome já existir em outro cliente
+        return redirect('/') 
 
-    conn.execute('UPDATE Cliente SET nome = ?, pasta_id = ?, status_id = ?, urgencia = ? WHERE id = ?', (nome, p_id, st_id, urgencia, id))
+    conn.execute('UPDATE Cliente SET nome = ?, pasta_id = ?, urgencia = ? WHERE id = ?', (nome, p_id, urgencia, id))
     
-    # Limpa e reinsere os relacionamentos
+    # Limpa e reinsere Vagas com Status
     conn.execute('DELETE FROM Cliente_Vaga WHERE cliente_id = ?', (id,))
-    if v_ids: conn.executemany('INSERT INTO Cliente_Vaga (cliente_id, vaga_id) VALUES (?, ?)', [(id, v) for v in v_ids])
+    conn.execute('DELETE FROM Cliente_Vaga WHERE cliente_id = ?', (id,))
+    if v_ids: 
+        vagas_dados = []
+        for v_id in v_ids:
+            st_id = request.form.get(f'status_vaga_{v_id}') or None
+            taxa = request.form.get(f'taxa_vaga_{v_id}') or None
+            if taxa == '': taxa = None
+            vagas_dados.append((id, v_id, st_id, taxa))
+        conn.executemany('INSERT INTO Cliente_Vaga (cliente_id, vaga_id, status_id, taxa) VALUES (?, ?, ?, ?)', vagas_dados)
     
     conn.execute('DELETE FROM Cliente_Selecionadora WHERE cliente_id = ?', (id,))
     if s_ids: conn.executemany('INSERT INTO Cliente_Selecionadora (cliente_id, selecionadora_id) VALUES (?, ?)', [(id, s) for s in s_ids])
 
     conn.execute('DELETE FROM Contato WHERE cliente_id = ?', (id,))
-    
     for n, e, t in zip(nomes_contato, emails_contato, tels_contato):
         if n.strip() or e.strip() or t.strip():
             conn.execute('INSERT INTO Contato (cliente_id, nome, email, telefone) VALUES (?, ?, ?, ?)', (id, n, e, t))
@@ -453,8 +573,16 @@ def editar_pasta(id):
 @app.route('/excluir_pasta/<int:id>')
 def excluir_pasta(id):
     conn = conectar()
+    
+    # 1. Tira as empresas apenas da pasta principal que vai ser apagada (joga pra "Sem pasta")
     conn.execute('UPDATE Cliente SET pasta_id = NULL WHERE pasta_id = ?', (id,))
+    
+    # 2. Promove as subpastas: tira o vínculo delas com a pasta mãe, transformando-as em pastas principais
+    conn.execute('UPDATE Pasta SET parent_id = NULL WHERE parent_id = ?', (id,))
+    
+    # 3. Deleta apenas a pasta principal
     conn.execute('DELETE FROM Pasta WHERE id = ?', (id,))
+    
     conn.commit()
     conn.close()
     return redirect('/')
@@ -564,15 +692,121 @@ def get_contatos(cliente_id):
 @app.route('/api/cliente_tags/<int:cliente_id>')
 def api_cliente_tags(cliente_id):
     conn = conectar()
-    st = conn.execute('SELECT s.nome FROM Status s JOIN Cliente e ON e.status_id = s.id WHERE e.id = ?', (cliente_id,)).fetchone()
-    vagas = conn.execute('SELECT v.nome FROM Vaga v JOIN Cliente_Vaga ev ON v.id = ev.vaga_id WHERE ev.cliente_id = ?', (cliente_id,)).fetchall()
+    
+    vagas_bd = conn.execute('''
+        SELECT v.nome, s.nome, cv.taxa 
+        FROM Cliente_Vaga cv 
+        JOIN Vaga v ON cv.vaga_id = v.id 
+        LEFT JOIN Status s ON cv.status_id = s.id 
+        WHERE cv.cliente_id = ?
+    ''', (cliente_id,)).fetchall()
+    
+    tags_vagas = []
+    for v_nome, s_nome, taxa in vagas_bd:
+        # Formata o texto dependendo se tem status, taxa ou ambos
+        partes_status = []
+        if s_nome: partes_status.append(s_nome)
+        if taxa is not None: partes_status.append(f"{taxa}%")
+        
+        texto_final = f"{v_nome} ({' - '.join(partes_status)})" if partes_status else v_nome
+        
+        tags_vagas.append({
+            'texto': texto_final, 
+            'status': s_nome.upper() if s_nome else ''
+        })
+            
     sels = conn.execute('SELECT s.nome FROM Selecionadora s JOIN Cliente_Selecionadora es ON s.id = es.selecionadora_id WHERE es.cliente_id = ?', (cliente_id,)).fetchall()
     conn.close()
+    
     return jsonify({
-        'status': st[0] if st else '',
-        'vagas': [v[0] for v in vagas],
+        'status': '', 
+        'vagas': tags_vagas,
         'selecionadoras': [s[0] for s in sels]
     })
+
+# --- ROTAS DE LEMBRETES ---
+@app.route('/api/criar_lembrete', methods=['POST'])
+def criar_lembrete():
+    texto = request.form.get('texto')
+    mensagem_id = request.form.get('mensagem_id')
+    data_alerta_html = request.form.get('data_alerta') 
+    
+    data_alerta = data_alerta_html.replace('T', ' ') + ':00'
+    
+    conn = conectar()
+    
+    # Adicionamos o "AND lido = 0" para barrar apenas se tiver um pendente
+    existe = conn.execute('SELECT id FROM Lembrete WHERE mensagem_id = ? AND lido = 0', (mensagem_id,)).fetchone()
+    
+    if existe:
+        conn.close()
+        return jsonify({'status': 'erro', 'mensagem': 'Essa mensagem já possui um lembrete pendente!'})
+        
+    # Se não tiver nenhum pendente (mesmo que tenha concluídos), cria o novo
+    conn.execute('INSERT INTO Lembrete (mensagem_id, texto, data_alerta) VALUES (?, ?, ?)', (mensagem_id, texto, data_alerta))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'sucesso'})
+
+@app.route('/api/lembrete_pendente')
+def lembrete_pendente():
+    conn = conectar()
+    agora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    res = conn.execute('''
+        SELECT l.id, l.texto, c.nome 
+        FROM Lembrete l
+        JOIN Mensagem m ON l.mensagem_id = m.id
+        JOIN Cliente c ON m.cliente_id = c.id
+        WHERE l.lido = 0 AND l.data_alerta <= ? 
+        ORDER BY l.data_alerta ASC LIMIT 1
+    ''', (agora,)).fetchone()
+    conn.close()
+    return jsonify({'id': res[0], 'texto': res[1], 'empresa': res[2]}) if res else jsonify(None)
+
+
+@app.route('/api/lista_lembretes')
+def lista_lembretes():
+    conn = conectar()
+    # Removido o "lido = 0" para manter o histórico
+    lembretes = conn.execute('''
+        SELECT l.id, l.texto, strftime('%d/%m/%Y %H:%M', l.data_alerta),
+               l.lido, c.nome,
+               CASE WHEN l.data_alerta <= datetime('now', 'localtime') AND l.lido = 0 THEN 1 ELSE 0 END as vencido
+        FROM Lembrete l
+        JOIN Mensagem m ON l.mensagem_id = m.id
+        JOIN Cliente c ON m.cliente_id = c.id
+        ORDER BY l.lido ASC, l.data_alerta DESC
+    ''').fetchall()
+    conn.close()
+    return jsonify([{'id': l[0], 'texto': l[1], 'data': l[2], 'lido': bool(l[3]), 'empresa': l[4], 'vencido': bool(l[5])} for l in lembretes])
+
+@app.route('/api/marcar_lembrete_lido/<int:id>', methods=['POST'])
+def marcar_lembrete_lido(id):
+    """Marca o lembrete como concluído"""
+    conn = conectar()
+    conn.execute('UPDATE Lembrete SET lido = 1 WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'sucesso'})
+
+
+
+@app.route('/resgatar_limbo')
+def resgatar_limbo():
+    conn = conectar()
+    
+    # Procura subpastas cuja pasta mãe não existe mais e transforma em pasta principal
+    conn.execute('''
+        UPDATE Pasta 
+        SET parent_id = NULL 
+        WHERE parent_id IS NOT NULL 
+        AND parent_id NOT IN (SELECT id FROM Pasta)
+    ''')
+    
+    conn.commit()
+    conn.close()
+    return redirect('/')
 
 if __name__ == '__main__':
     criar_tabelas()
