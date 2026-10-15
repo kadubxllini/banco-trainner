@@ -70,6 +70,13 @@ class SecurityTests(unittest.TestCase):
         self.assertTrue(cookie.http_only)
         self.assertEqual(cookie.same_site,'Lax')
 
+    def test_anonymous_requests_do_not_invalidate_login_form(self):
+        token=self.token(self.client.get('/login'))
+        self.assertEqual(self.client.get('/api/lista_lembretes').status_code,401)
+        self.assertEqual(self.client.get('/favicon.ico').status_code,302)
+        response=self.client.post('/login',data={'email':'test@example.com','password':TEST_PASSWORD,'csrf_token':token})
+        self.assertEqual(response.status_code,302)
+
     def test_logout_revokes_copied_cookie(self):
         token=self.login()
         stolen=self.client.get_cookie('radar_session').value

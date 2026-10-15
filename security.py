@@ -106,7 +106,8 @@ def install_security(app):
                         conn.execute('UPDATE Sessao SET last_seen=? WHERE token=?', (now, record['token']))
                         conn.commit()
             if not valid:
-                session.clear()
+                if token:
+                    session.clear()
                 if json_request():
                     return jsonify(erro='Sua sessão expirou. Entre novamente.'), 401
                 return redirect('/login')
