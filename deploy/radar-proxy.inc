@@ -1,0 +1,10 @@
+proxy_http_version 1.1;
+proxy_set_header Host radar.clasure.com.br;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $remote_addr;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_connect_timeout 5s;
+proxy_read_timeout 65s;
+proxy_send_timeout 65s;
+proxy_no_cache 1;
+proxy_cache_bypass 1;

@@ -1,0 +1,28 @@
+[Unit]
+Description=RADAR Trainner RH
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=radar
+Group=radar
+WorkingDirectory=/var/oled/radar/current
+EnvironmentFile=/etc/radar/radar.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/var/oled/radar/venv/bin/python -m gunicorn --bind 127.0.0.1:5056 --workers 1 --threads 2 --timeout 60 --max-requests 1000 --max-requests-jitter 100 --access-logfile - --error-logfile - app:app
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/oled/radar/shared
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+MemoryMax=256M
+TasksMax=32
+
+[Install]
+WantedBy=multi-user.target

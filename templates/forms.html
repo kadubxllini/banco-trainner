@@ -1,0 +1,212 @@
+{% from 'icons.html' import icon %}
+    <div id="modalCliente" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cadastrar Cliente</h3>
+                <span class="close-modal" onclick="fecharModalCliente()">×</span>
+            </div>
+            <form action="/salvar" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="nome_cliente" placeholder="Nome do cliente" required>
+                <select name="pasta_id" class="select-pasta">
+                    <option value="">Sem pasta</option>
+                    {% for pasta in pastas %}
+                        <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
+                    {% endfor %}
+                </select>
+
+                <p class="section-label">Selecione as Vagas e seus respectivos Status:</p>
+                <div>
+                    {% for vaga in vagas %}
+                        <div>
+                            <label>
+                                <input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}" onchange="document.getElementById('status_vaga_{{ vaga[0] }}').disabled = !this.checked; document.getElementById('taxa_vaga_{{ vaga[0] }}').disabled = !this.checked;">
+                                <span>{{ vaga[1] }}</span>
+                            </label>
+                            
+                            <div>
+                                <select name="status_vaga_{{ vaga[0] }}" id="status_vaga_{{ vaga[0] }}" class="select-pasta" disabled>
+                                    <option value="">Sem Status</option>
+                                    {% for st in status_lista %}
+                                        <option value="{{ st[0] }}">{{ st[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="number" name="taxa_vaga_{{ vaga[0] }}" id="taxa_vaga_{{ vaga[0] }}" min="0" max="999.999" step="0.001" placeholder="Taxa %" class="select-pasta" disabled>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <p class="section-label">Selecionadoras:</p>
+                <div class="vagas-tag-grid">
+                    {% for sel in selecionadoras %}
+                        <label class="tag-check"><input type="checkbox" name="selecionadoras_ids" value="{{ sel[0] }}"><span class="tag-content">{{ sel[1] }}</span></label>
+                    {% endfor %}
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalEditar" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Cliente</h3>
+                <span class="close-modal" onclick="fecharModalEditar()">×</span>
+            </div>
+            <form id="formEditar" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-duas-colunas">
+                    <div class="coluna-esquerda">
+                        <input type="text" name="nome_cliente" id="edit_nome" required>
+                        <select name="pasta_id" id="edit_pasta" class="select-pasta">
+                            <option value="">Sem pasta</option>
+                            {% for pasta in pastas %}
+                                <option value="{{ pasta[0] }}">{{ pasta[1] }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <p class="section-label">Vagas e seus Status:</p>
+                        <div>
+                            {% for vaga in vagas %}
+                                <div>
+                                    <label>
+                                        <input type="checkbox" name="vagas_ids" value="{{ vaga[0] }}" class="edit-vaga-check" id="edit_check_{{ vaga[0] }}" onchange="document.getElementById('edit_status_{{ vaga[0] }}').disabled = !this.checked; document.getElementById('edit_taxa_{{ vaga[0] }}').disabled = !this.checked;">
+                                        <span>{{ vaga[1] }}</span>
+                                    </label>
+                                    
+                                    <div>
+                                        <select name="status_vaga_{{ vaga[0] }}" id="edit_status_{{ vaga[0] }}" class="select-pasta edit-status-select" disabled>
+                                            <option value="">Sem Status</option>
+                                            {% for st in status_lista %}
+                                                <option value="{{ st[0] }}">{{ st[1] }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <input type="number" name="taxa_vaga_{{ vaga[0] }}" id="edit_taxa_{{ vaga[0] }}" min="0" max="999.999" step="0.001" placeholder="Taxa %" class="select-pasta" disabled>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <p class="section-label">Selecionadoras:</p>
+                        <div class="vagas-tag-grid">
+                            {% for sel in selecionadoras %}
+                                <label class="tag-check"><input type="checkbox" name="selecionadoras_ids" value="{{ sel[0] }}" class="edit-sel-check"><span class="tag-content">{{ sel[1] }}</span></label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="coluna-direita">
+                        <p class="section-label">Contatos:</p>
+                        <div id="contatos-container"></div>
+                        <button type="button" onclick="adicionarContatoBloco()" class="btn-yellow">+ Adicionar Contato</button>
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-confirmar">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalGerenciarVagas" class="modal">
+        <div class="modal-content modal-vagas">
+            <div class="modal-header"><h3>Gerenciar Vagas</h3><span class="close-modal" onclick="fecharModalVagas()">×</span></div>
+            <form action="/salvar_vaga" method="POST" class="vaga-add-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_vaga" placeholder="Nova vaga" required><button type="submit" class="btn-yellow">Adicionar</button></form>
+            <div class="vagas-lista-container">{% for vaga in vagas %}<div class="vaga-item"><span>{{ vaga[1] }}</span><div class="vaga-acoes"><button data-nome="{{ vaga[1] }}" onclick="prepararEdicaoVaga('{{ vaga[0] }}', this.dataset.nome)" class="btn-icon" aria-label="Editar" title="Editar">{{ icon('edit') }}</button><a href="/excluir_vaga/{{ vaga[0] }}" class="btn-icon delete" onclick="return confirm('Excluir vaga?')" aria-label="Excluir" title="Excluir">{{ icon('trash') }}</a></div></div>{% endfor %}</div>
+        </div>
+    </div>
+
+    <div id="modalGerenciarStatus" class="modal">
+        <div class="modal-content modal-vagas">
+            <div class="modal-header"><h3>Gerenciar Status</h3><span class="close-modal" onclick="fecharModalStatus()">×</span></div>
+            <form action="/salvar_status" method="POST" class="vaga-add-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_status" placeholder="Novo status" required><button type="submit" class="btn-yellow">Adicionar</button></form>
+            <div class="vagas-lista-container">{% for st in status_lista %}<div class="vaga-item"><span>{{ st[1] }}</span><div class="vaga-acoes"><button data-nome="{{ st[1] }}" onclick="prepararEdicaoStatus('{{ st[0] }}', this.dataset.nome)" class="btn-icon" aria-label="Editar" title="Editar">{{ icon('edit') }}</button><a href="/excluir_status/{{ st[0] }}" class="btn-icon delete" onclick="return confirm('Excluir status?')" aria-label="Excluir" title="Excluir">{{ icon('trash') }}</a></div></div>{% endfor %}</div>
+        </div>
+    </div>
+    
+    <div id="modalGerenciarSelecionadoras" class="modal">
+        <div class="modal-content modal-vagas">
+            <div class="modal-header"><h3>Gerenciar Selecionadoras</h3><span class="close-modal" onclick="fecharModalSelecionadoras()">×</span></div>
+            <form action="/salvar_selecionadora" method="POST" class="vaga-add-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_selecionadora" placeholder="Nova selecionadora" required><button type="submit" class="btn-yellow">Adicionar</button></form>
+            <div class="vagas-lista-container">{% for sel in selecionadoras %}<div class="vaga-item"><span>{{ sel[1] }}</span><div class="vaga-acoes"><button data-nome="{{ sel[1] }}" onclick="prepararEdicaoSelecionadora('{{ sel[0] }}', this.dataset.nome)" class="btn-icon" aria-label="Editar" title="Editar">{{ icon('edit') }}</button><a href="/excluir_selecionadora/{{ sel[0] }}" class="btn-icon delete" onclick="return confirm('Excluir selecionadora?')" aria-label="Excluir" title="Excluir">{{ icon('trash') }}</a></div></div>{% endfor %}</div>
+        </div>
+    </div>
+
+    <div id="modalEditarVaga" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Vaga</h3><span class="close-modal" onclick="fecharModalEditarVaga()">×</span></div><form id="formEditarVaga" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_vaga" id="edit_nome_vaga" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
+    <div id="modalEditarStatus" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Status</h3><span class="close-modal" onclick="fecharModalEditarStatus()">×</span></div><form id="formEditarStatus" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_status" id="edit_nome_st" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
+    <div id="modalEditarSelecionadora" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Selecionadora</h3><span class="close-modal" onclick="fecharModalEditarSelecionadora()">×</span></div><form id="formEditarSelecionadora" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_selecionadora" id="edit_nome_sel" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
+
+    <div id="modalPasta" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Nova Pasta</h3><span class="close-modal" onclick="fecharModalPasta()">×</span></div>
+            <form action="/salvar_pasta" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="nome_pasta" placeholder="Nome" required>
+                <p class="section-label">Colocar dentro de (Opcional):</p>
+                <select name="parent_id" class="select-pasta"><option value="">Nenhuma (Pasta Principal)</option>{% for pasta in pastas_principais %}<option value="{{ pasta[0] }}">{{ pasta[1] }}</option>{% endfor %}</select>
+                <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalEditarPasta" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Editar Pasta</h3><span class="close-modal" onclick="fecharModalEditarPasta()">×</span></div>
+            <form id="formEditarPasta" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="nome_pasta" id="edit_nome_pasta" required>
+                <p class="section-label">Colocar dentro de (Opcional):</p>
+                <select name="parent_id" id="edit_parent_pasta" class="select-pasta"><option value="">Nenhuma (Pasta Principal)</option>{% for pasta in pastas_principais %}<option value="{{ pasta[0] }}">{{ pasta[1] }}</option>{% endfor %}</select>
+                <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalCalendario" class="modal">
+        <div class="modal-content modal-calendario-content">
+            <div class="modal-header">
+                <div><h3>Calendário</h3><p class="calendar-subtitle">Interações e lembretes, organizados por dia.</p></div>
+                <span class="close-modal" onclick="fecharModalCalendario()">×</span>
+            </div>
+            <div class="calendar-layout"><section class="calendar-month" aria-label="Selecionar dia">
+              <div class="calendar-controls"><span id="mesAnoAtual" class="mes-ano-label" aria-live="polite"></span><div><button type="button" id="calendarToday" class="subtle-button">Hoje</button><button type="button" onclick="mudarMes(-1)" class="icon-button" aria-label="Mês anterior">‹</button><button type="button" onclick="mudarMes(1)" class="icon-button" aria-label="Próximo mês">›</button></div></div>
+              <div class="calendar-grid" aria-hidden="true"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
+              <div id="calendarDays" class="calendar-days"></div>
+              <div class="calendar-legend"><span><i class="interaction-dot"></i> Interação</span><span><i class="reminder-dot"></i> Lembrete</span></div>
+              <label class="calendar-jump">Ir para uma data<input id="calendarDate" type="date" aria-label="Ir para uma data"></label>
+            </section><section id="interacoesDiaContainer" class="calendar-agenda" aria-label="Detalhes do dia"><p class="agenda-eyebrow">AGENDA DO DIA</p><h4 id="dataSelecionadaLabel"></h4><div id="listaInteracoes" class="lista-interacoes-calendario" aria-live="polite"></div></section></div>
+        </div>
+    </div>
+
+    <div id="modalLembretes" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Meus Lembretes</h3>
+                <span class="close-modal" onclick="fecharModalLembretes()">×</span>
+            </div>
+            <div id="listaLembretes"></div>
+        </div>
+    </div>
+
+    <div id="modalCriarLembrete" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Agendar Lembrete</h3>
+                <span class="close-modal" onclick="fecharModalCriarLembrete()">×</span>
+            </div>
+            <form id="formCriarLembrete" onsubmit="salvarNovoLembrete(event)"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" id="lembreteMsgId" name="mensagem_id">
+                <input type="hidden" id="lembreteTexto" name="texto">
+                <p class="section-label">Quando você quer ser lembrado?</p>
+                <input type="datetime-local" id="lembreteDataHora" name="data_alerta" required>
+                <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
+            </form>
+        </div>
+    </div>
+
+
+
+
+
+

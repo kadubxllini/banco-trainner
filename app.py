@@ -3,10 +3,13 @@ import csv
 import io
 import sqlite3
 import logging
+import uuid
+from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+from contextlib import closing
 
-from flask import Flask, render_template, request, redirect, jsonify, make_response, cli
+from flask import Flask, render_template, request, redirect, jsonify, make_response, cli, abort, send_from_directory
 from werkzeug.utils import secure_filename
 
 # ==========================================
@@ -16,9 +19,10 @@ cli.show_server_banner = lambda *args: None
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+BASE_DIR = Path(__file__).resolve().parent
+app.config['UPLOAD_FOLDER'] = os.environ.get('RADAR_UPLOAD_DIR', str(BASE_DIR / 'static' / 'uploads'))
 
-BANCO_DIR = 'banco_de_dados'
+BANCO_DIR = os.environ.get('RADAR_DATA_DIR', str(BASE_DIR / 'banco_de_dados'))
 BANCO_PATH = os.path.join(BANCO_DIR, 'dados.db')
 
 # ==========================================
@@ -28,7 +32,41 @@ def conectar():
     """Retorna a conexão com o SQLite, garantindo que os diretórios existam."""
     os.makedirs(BANCO_DIR, exist_ok=True)
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True) 
-    return sqlite3.connect(BANCO_PATH)
+    conn = sqlite3.connect(BANCO_PATH, timeout=10)
+    conn.execute('PRAGMA foreign_keys=ON')
+    return conn
+
+
+def upload_path(relative):
+    if not relative.startswith('uploads/'):
+        abort(404)
+    root = Path(app.config['UPLOAD_FOLDER']).resolve()
+    candidate = (root / relative.removeprefix('uploads/')).resolve()
+    if candidate.parent != root:
+        abort(404)
+    return candidate
+
+
+def raster_type(path):
+    with open(path, 'rb') as image:
+        header = image.read(16)
+    if header.startswith(b'\x89PNG\r\n\x1a\n'): return 'image/png'
+    if header.startswith(b'\xff\xd8\xff'): return 'image/jpeg'
+    if header.startswith((b'GIF87a', b'GIF89a')): return 'image/gif'
+    if header.startswith(b'RIFF') and header[8:12] == b'WEBP': return 'image/webp'
+    return None
+
+
+@app.get('/anexos/<path:filename>')
+def protected_upload(filename):
+    path = upload_path('uploads/' + filename)
+    if not path.is_file(): abort(404)
+    mime = raster_type(path)
+    response = send_from_directory(app.config['UPLOAD_FOLDER'], path.name,
+                                   mimetype=mime or 'application/octet-stream',
+                                   as_attachment=not bool(mime), conditional=False)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 def criar_tabelas():
     """Inicializa as tabelas e aplica atualizações em bancos legados."""
@@ -115,7 +153,21 @@ def index():
     selecionadoras = conn.execute('SELECT id, nome FROM Selecionadora ORDER BY nome ASC').fetchall()
     
     # 3. Clientes e Agrupamentos
-    clientes = conn.execute('SELECT id, nome, urgencia, pasta_id, status_id FROM Cliente ORDER BY id DESC').fetchall()
+    clientes = conn.execute('SELECT id, nome, urgencia, pasta_id, NULL FROM Cliente ORDER BY id DESC').fetchall()
+    radar = conn.execute('''
+        SELECT c.id, c.nome, COALESCE(p.nome, 'Sem pasta'),
+               COALESCE(v.nome, 'Sem vaga'), COALESCE(st.nome, 'Sem etapa'), cv.taxa,
+               COALESCE((SELECT GROUP_CONCAT(s.nome, ', ') FROM Cliente_Selecionadora cs
+                         JOIN Selecionadora s ON s.id = cs.selecionadora_id WHERE cs.cliente_id = c.id), 'Sem responsável'), cv.vaga_id, cv.status_id
+        FROM Cliente c LEFT JOIN Pasta p ON p.id = c.pasta_id
+        LEFT JOIN Cliente_Vaga cv ON cv.cliente_id = c.id
+        LEFT JOIN Vaga v ON v.id = cv.vaga_id LEFT JOIN Status st ON st.id = cv.status_id
+        ORDER BY c.nome COLLATE NOCASE, v.nome COLLATE NOCASE
+    ''').fetchall()
+    empresas_radar = {}
+    for row in radar:
+        empresa = empresas_radar.setdefault(row[0], {'id': row[0], 'nome': row[1], 'pasta': row[2], 'responsavel': row[6], 'vagas': []})
+        empresa['vagas'].append({'id': row[7], 'nome': row[3], 'status': row[4], 'status_id': row[8], 'taxa': row[5]})
     sem_pasta = []
     por_pasta = defaultdict(list)
     
@@ -139,13 +191,13 @@ def index():
         cpe[c_id].append({'nome': nome or '', 'email': email or '', 'telefone': telefone or ''})
 
     # 5. Lembretes Ativos
-    atrasados_db = conn.execute("SELECT DISTINCT m.cliente_id FROM Lembrete l JOIN Mensagem m ON l.mensagem_id = m.id WHERE l.lido = 0 AND l.data_alerta <= datetime('now', 'localtime')").fetchall()
-    pendentes_db = conn.execute("SELECT DISTINCT m.cliente_id FROM Lembrete l JOIN Mensagem m ON l.mensagem_id = m.id WHERE l.lido = 0 AND l.data_alerta > datetime('now', 'localtime')").fetchall()
+    atrasados_db = conn.execute("SELECT DISTINCT c.id FROM Lembrete l JOIN Mensagem m ON l.mensagem_id = m.id JOIN Cliente c ON c.id = m.cliente_id WHERE l.lido = 0 AND l.data_alerta <= datetime('now', 'localtime')").fetchall()
+    pendentes_db = conn.execute("SELECT DISTINCT c.id FROM Lembrete l JOIN Mensagem m ON l.mensagem_id = m.id JOIN Cliente c ON c.id = m.cliente_id WHERE l.lido = 0 AND l.data_alerta > datetime('now', 'localtime')").fetchall()
     
     conn.close()
     
     return render_template(
-        'index.html',
+        'index.html', radar=radar, empresas_radar=list(empresas_radar.values()), cliente_pastas={c[0]: c[3] for c in clientes}, todas_pastas_lookup={p[0]: p[2] for p in todas_pastas},
         pastas=pastas_formatadas, pastas_principais=pastas_principais, subpastas=subpastas,
         clientes_sem_pasta=sem_pasta, clientes_por_pasta=por_pasta,
         vagas=vagas, status_lista=status_lista, selecionadoras=selecionadoras,
@@ -156,6 +208,24 @@ def index():
 # ==========================================
 # CHAT E MENSAGENS
 # ==========================================
+@app.route('/api/processos/etapa', methods=['POST'])
+def atualizar_etapa():
+    data = request.get_json(silent=True) or {}
+    try:
+        cliente_id = int(data['cliente_id'])
+        vaga_id = int(data['vaga_id'])
+        status_id = int(data['status_id']) if data.get('status_id') else None
+    except (ValueError, TypeError, KeyError):
+        return jsonify(erro='Dados inválidos.'), 400
+    with closing(conectar()) as conn:
+        if status_id is not None and not conn.execute('SELECT 1 FROM Status WHERE id=?', (status_id,)).fetchone():
+            return jsonify(erro='Etapa não encontrada.'), 400
+        cursor = conn.execute('UPDATE Cliente_Vaga SET status_id=? WHERE cliente_id=? AND vaga_id=?', (status_id, cliente_id, vaga_id))
+        if not cursor.rowcount:
+            return jsonify(erro='Processo não encontrado.'), 404
+        conn.commit()
+    return jsonify(status='sucesso')
+
 @app.route('/get_mensagens/<int:cliente_id>')
 def get_mensagens(cliente_id):
     conn = conectar()
@@ -198,14 +268,21 @@ def enviar_mensagem():
     arquivos = request.files.getlist('arquivo')
     agora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
+    allowed = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt', '.zip'}
+    for arquivo in arquivos:
+        if arquivo and arquivo.filename and Path(secure_filename(arquivo.filename)).suffix.lower() not in allowed:
+            return jsonify(erro='Tipo de arquivo não permitido.'), 400
     conn = conectar()
+    if not conn.execute('SELECT id FROM Cliente WHERE id=?', (cliente_id,)).fetchone():
+        conn.close()
+        return jsonify(erro='Empresa não encontrada.'), 404
     if texto and texto.strip():
         conn.execute('INSERT INTO Mensagem (cliente_id, texto, tipo, data_hora) VALUES (?, ?, ?, ?)', (cliente_id, texto, 'texto', agora))
 
     for arquivo in arquivos:
         if arquivo and arquivo.filename:
             nome_seguro = secure_filename(arquivo.filename)
-            filename = f"{int(datetime.now().timestamp())}_{nome_seguro}"
+            filename = f"{uuid.uuid4().hex}_{nome_seguro}"
             arquivo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             
             tipo = 'imagem' if os.path.splitext(filename)[1].lower() in ['.png', '.jpg', '.jpeg', '.gif', '.webp'] else 'arquivo'
@@ -230,8 +307,8 @@ def excluir_mensagem(id):
     conn = conectar()
     msg = conn.execute('SELECT arquivo_path FROM Mensagem WHERE id = ?', (id,)).fetchone()
     if msg and msg[0]:
-        caminho = os.path.join('static', msg[0])
-        if os.path.exists(caminho): os.remove(caminho)
+        caminho = upload_path(msg[0])
+        if caminho.is_file(): caminho.unlink()
             
     conn.execute('DELETE FROM Mensagem WHERE id = ?', (id,))
     conn.commit()
@@ -299,7 +376,7 @@ def editar(id):
     conn.close()
     return redirect('/')
 
-@app.route('/excluir/<int:id>')
+@app.route('/excluir/<int:id>', methods=['POST'])
 def excluir(id):
     conn = conectar()
     conn.execute('DELETE FROM Cliente WHERE id = ?', (id,))
@@ -312,6 +389,8 @@ def excluir(id):
 # ==========================================
 def gerenciar_entidade_simples(tabela, acao, id=None, nome=None, parent_id=None):
     """Função genérica para reduzir a repetição no CRUD de Vaga, Status e Selecionadora."""
+    if tabela not in {'Vaga', 'Status', 'Selecionadora'}:
+        abort(400)
     conn = conectar()
     if acao == 'salvar' and nome:
         if not conn.execute(f'SELECT id FROM {tabela} WHERE LOWER(nome) = LOWER(?)', (nome,)).fetchone():
@@ -320,7 +399,7 @@ def gerenciar_entidade_simples(tabela, acao, id=None, nome=None, parent_id=None)
         if not conn.execute(f'SELECT id FROM {tabela} WHERE LOWER(nome) = LOWER(?) AND id != ?', (nome, id)).fetchone():
             conn.execute(f'UPDATE {tabela} SET nome = ? WHERE id = ?', (nome, id))
     elif acao == 'excluir' and id:
-        if tabela == 'Status': conn.execute('UPDATE Cliente SET status_id = NULL WHERE status_id = ?', (id,))
+        if tabela == 'Status': conn.execute('UPDATE Cliente_Vaga SET status_id = NULL WHERE status_id = ?', (id,))
         conn.execute(f'DELETE FROM {tabela} WHERE id = ?', (id,))
     conn.commit()
     conn.close()
@@ -330,7 +409,7 @@ def gerenciar_entidade_simples(tabela, acao, id=None, nome=None, parent_id=None)
 def salvar_vaga(): gerenciar_entidade_simples('Vaga', 'salvar', nome=request.form.get('nome_vaga', '').strip()); return redirect('/')
 @app.route('/editar_vaga/<int:id>', methods=['POST'])
 def editar_vaga(id): gerenciar_entidade_simples('Vaga', 'editar', id, nome=request.form.get('nome_vaga', '').strip()); return redirect('/')
-@app.route('/excluir_vaga/<int:id>')
+@app.route('/excluir_vaga/<int:id>', methods=['POST'])
 def excluir_vaga(id): gerenciar_entidade_simples('Vaga', 'excluir', id); return redirect('/')
 
 # STATUS
@@ -338,7 +417,7 @@ def excluir_vaga(id): gerenciar_entidade_simples('Vaga', 'excluir', id); return 
 def salvar_status(): gerenciar_entidade_simples('Status', 'salvar', nome=request.form.get('nome_status', '').strip()); return redirect('/')
 @app.route('/editar_status/<int:id>', methods=['POST'])
 def editar_status(id): gerenciar_entidade_simples('Status', 'editar', id, nome=request.form.get('nome_status', '').strip()); return redirect('/')
-@app.route('/excluir_status/<int:id>')
+@app.route('/excluir_status/<int:id>', methods=['POST'])
 def excluir_status(id): gerenciar_entidade_simples('Status', 'excluir', id); return redirect('/')
 
 # SELECIONADORAS
@@ -346,7 +425,7 @@ def excluir_status(id): gerenciar_entidade_simples('Status', 'excluir', id); ret
 def salvar_selecionadora(): gerenciar_entidade_simples('Selecionadora', 'salvar', nome=request.form.get('nome_selecionadora', '').strip()); return redirect('/')
 @app.route('/editar_selecionadora/<int:id>', methods=['POST'])
 def editar_selecionadora(id): gerenciar_entidade_simples('Selecionadora', 'editar', id, nome=request.form.get('nome_selecionadora', '').strip()); return redirect('/')
-@app.route('/excluir_selecionadora/<int:id>')
+@app.route('/excluir_selecionadora/<int:id>', methods=['POST'])
 def excluir_selecionadora(id): gerenciar_entidade_simples('Selecionadora', 'excluir', id); return redirect('/')
 
 # PASTAS (Contém lógica de hierarquia, não usa função genérica)
@@ -375,7 +454,7 @@ def editar_pasta(id):
         conn.close()
     return redirect('/')
 
-@app.route('/excluir_pasta/<int:id>')
+@app.route('/excluir_pasta/<int:id>', methods=['POST'])
 def excluir_pasta(id):
     conn = conectar()
     conn.execute('UPDATE Cliente SET pasta_id = NULL WHERE pasta_id = ?', (id,))
@@ -385,7 +464,7 @@ def excluir_pasta(id):
     conn.close()
     return redirect('/')
 
-@app.route('/resgatar_limbo')
+@app.route('/resgatar_limbo', methods=['POST'])
 def resgatar_limbo():
     conn = conectar()
     conn.execute('UPDATE Pasta SET parent_id = NULL WHERE parent_id IS NOT NULL AND parent_id NOT IN (SELECT id FROM Pasta)')
@@ -509,12 +588,15 @@ def exportar_relatorio():
     for linha in dados:
         linha_formatada = [str(item) if item is not None else '' for item in linha]
         if linha_formatada[4]: linha_formatada[4] += '%'
-        writer.writerow(linha_formatada)
+        writer.writerow(["'" + value if value.lstrip().startswith(('=', '+', '-', '@', '\t', '\r')) else value for value in linha_formatada])
     
     response = make_response("\ufeff" + output.getvalue())
     response.headers["Content-Disposition"] = f"attachment; filename=relatorio_clientes_{datetime.now().strftime('%d_%m_%Y')}.csv"
     response.headers["Content-type"] = "text/csv; charset=utf-8"
     return response
+
+from security import install_security
+install_security(app)
 
 if __name__ == '__main__':
     criar_tabelas()

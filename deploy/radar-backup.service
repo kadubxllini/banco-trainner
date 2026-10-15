@@ -1,0 +1,19 @@
+[Unit]
+Description=Private RADAR backup
+
+[Service]
+Type=oneshot
+User=radar
+Group=radar
+EnvironmentFile=/etc/radar/radar.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+WorkingDirectory=/var/oled/radar/current
+ExecStart=/var/oled/radar/venv/bin/python backup_radar.py
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/oled/radar/shared/backups
+RestrictSUIDSGID=true
+CapabilityBoundingSet=

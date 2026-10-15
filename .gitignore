@@ -9,3 +9,7 @@ static/uploads/
 
 # Cache oculto do Python
 __pycache__/
+.localdeps/
+outputs/
+instance/
+.bug-hunter/
