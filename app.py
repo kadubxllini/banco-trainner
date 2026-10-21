@@ -4,12 +4,13 @@ import io
 import sqlite3
 import logging
 import uuid
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 from contextlib import closing
 
-from flask import Flask, render_template, request, redirect, jsonify, make_response, cli, abort, send_from_directory
+from flask import Flask, render_template, request, redirect, jsonify, make_response, cli, abort, send_from_directory, send_file
 from werkzeug.utils import secure_filename
 
 # ==========================================
@@ -594,6 +595,25 @@ def exportar_relatorio():
     response.headers["Content-Disposition"] = f"attachment; filename=relatorio_clientes_{datetime.now().strftime('%d_%m_%Y')}.csv"
     response.headers["Content-type"] = "text/csv; charset=utf-8"
     return response
+
+@app.get('/backup/banco')
+def baixar_backup():
+    # SQLite backup API produces a consistent snapshot even during concurrent writes.
+    # The private temporary file is removed before the response is sent.
+    with tempfile.TemporaryDirectory(prefix='radar-download-') as directory:
+        snapshot = Path(directory) / 'dados.db'
+        with closing(sqlite3.connect(Path(BANCO_PATH).resolve().as_uri() + '?mode=ro', uri=True)) as source:
+            with closing(sqlite3.connect(snapshot)) as destination:
+                source.backup(destination, pages=256, sleep=0.05)
+                if destination.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+                    abort(500, 'Não foi possível gerar um backup válido.')
+        content = io.BytesIO(snapshot.read_bytes())
+    name = 'RADAR_banco_' + datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + '.db'
+    response = send_file(content, mimetype='application/octet-stream', as_attachment=True,
+                         download_name=name, conditional=False, max_age=0)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
 
 from security import install_security
 install_security(app)

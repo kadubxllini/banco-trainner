@@ -157,6 +157,24 @@ class SecurityTests(unittest.TestCase):
         finally:
             module.app.config['SESSION_COOKIE_SECURE']=False
 
+    def test_download_current_consistent_database(self):
+        self.assertEqual(self.client.get('/backup/banco').status_code,302)
+        token=self.login()
+        self.client.post('/salvar',data={'nome_cliente':'Backup current snapshot','csrf_token':token})
+        with self.client.get('/backup/banco') as response:
+            self.assertEqual(response.status_code,200)
+            self.assertEqual(response.headers['Cache-Control'],'no-store')
+            self.assertIn('attachment;',response.headers['Content-Disposition'])
+            self.assertIn('.db',response.headers['Content-Disposition'])
+            downloaded=self.root/'downloaded.db'
+            downloaded.write_bytes(response.data)
+        with closing(sqlite3.connect(downloaded)) as db:
+            self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0],'ok')
+            self.assertIsNotNone(db.execute('SELECT id FROM Cliente WHERE nome=?',('Backup current snapshot',)).fetchone())
+            tables={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            self.assertNotIn('Usuario',tables)
+            self.assertNotIn('Sessao',tables)
+
 
 if __name__=='__main__':
     try:
