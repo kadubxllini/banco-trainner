@@ -20,7 +20,7 @@ foreach ($identity in @($sid, 'S-1-5-18')) {
         (New-Object Security.Principal.SecurityIdentifier($identity)), 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
     $acl.AddAccessRule($rule)
 }
-Set-Acl -LiteralPath $install -AclObject $acl
+[IO.Directory]::SetAccessControl($install, $acl)
 Write-Host 'RADAR - backup diario do banco' -ForegroundColor Cyan
 Write-Host ('Pasta: ' + $Destination)
 Write-Host ('Horario: ' + $Time + ' (horario deste computador)')
