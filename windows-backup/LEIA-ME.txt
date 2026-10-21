@@ -6,7 +6,7 @@ BACKUP DIARIO DO RADAR - WINDOWS 10/11
 4. Aguarde a mensagem de instalacao concluida.
 
 Destino padrao: Documentos\Backups RADAR
-Horario padrao: todos os dias as 18h, no horario do computador.
+Horario padrao: todos os dias as 13h, no horario do computador.
 Retencao: sete copias. O mais antigo so e removido depois que o novo passa
 na verificacao de integridade SQLite. Arquivos de outros nomes nao sao apagados.
 
@@ -34,3 +34,4 @@ Para mudar horario/pasta, execute no PowerShell, a partir da pasta extraida:
   .\Instalar-Backup-RADAR.ps1 -Time '17:30' -Destination 'C:\Meus Backups RADAR'
 
 Reinstalar atualiza a mesma tarefa e nao cria tarefas duplicadas.
+

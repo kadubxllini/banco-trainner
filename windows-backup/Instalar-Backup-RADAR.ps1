@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Destination = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Backups RADAR'),
-    [string]$Time = '18:00'
+    [string]$Time = '13:00'
 )
 $ErrorActionPreference = 'Stop'
 $hour = [datetime]::ParseExact($Time, 'HH:mm', [Globalization.CultureInfo]::InvariantCulture)
@@ -46,3 +46,4 @@ Write-Host 'Instalado! Primeiro backup validado e tarefa diaria criada.' -Foregr
 Write-Host 'O PC precisa estar ligado, com internet e este usuario conectado ao Windows.'
 Write-Host 'Se perder o horario, o Windows tentara executar quando estiver disponivel.'
 Write-Host ('Log: ' + (Join-Path $install 'backup.log'))
+
