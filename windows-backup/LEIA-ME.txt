@@ -1,0 +1,36 @@
+BACKUP DIARIO DO RADAR - WINDOWS 10/11
+
+1. Extraia todos os arquivos do ZIP para uma pasta.
+2. Abra INSTALAR.bat com seu usuario normal do Windows.
+3. Informe o e-mail e a senha do RADAR.
+4. Aguarde a mensagem de instalacao concluida.
+
+Destino padrao: Documentos\Backups RADAR
+Horario padrao: todos os dias as 18h, no horario do computador.
+Retencao: sete copias. O mais antigo so e removido depois que o novo passa
+na verificacao de integridade SQLite. Arquivos de outros nomes nao sao apagados.
+
+O computador deve estar ligado, conectado a internet e com o usuario da
+instalacao conectado ao Windows. Pode estar bloqueado. Nao funciona desligado.
+Se perder o horario, a tarefa executa quando estiver disponivel. Falhas
+temporarias podem ser repetidas ate duas vezes com intervalo de 15 minutos.
+
+A senha do painel fica criptografada por DPAPI, vinculada a este usuario e PC,
+em %LOCALAPPDATA%\RADAR Backup\credential.xml. Nunca envie essa pasta a outra pessoa.
+Este instalador nao usa credencial exclusiva de backup: usa o login existente.
+Se trocar a senha do RADAR, execute INSTALAR.bat novamente.
+
+O arquivo .db contem dados confidenciais. Use uma pasta privada. Se Documentos
+estiver no OneDrive, o backup tambem podera ser sincronizado para essa conta.
+Anexos e contas de login nao fazem parte deste backup do banco.
+
+Para executar manualmente: Agendador de Tarefas > RADAR Backup Diario... > Executar.
+Para desativar: nessa mesma tarefa, escolha Desabilitar. A tarefa e criada
+individualmente por usuario, sem exigir senha do Windows ou administrador.
+
+Log de sucesso/falha: %LOCALAPPDATA%\RADAR Backup\backup.log
+
+Para mudar horario/pasta, execute no PowerShell, a partir da pasta extraida:
+  .\Instalar-Backup-RADAR.ps1 -Time '17:30' -Destination 'C:\Meus Backups RADAR'
+
+Reinstalar atualiza a mesma tarefa e nao cria tarefas duplicadas.
