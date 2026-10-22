@@ -3,6 +3,11 @@
 A aba Relatório diário abre `/relatorio-diario`, exige o mesmo login do painel
 e permite filtrar por uma data ou período, movimento e texto (incluindo empresa
 e mensagem). Exibe até 100 movimentos por página, agrupados por dia.
+Os filtros são automáticos; datas, movimento e usuário aplicam na mudança,
+e a busca aplica após uma breve pausa na digitação, sem recarregar o formulário.
+Cada novo movimento guarda nome e e-mail da conta autenticada, independentemente
+de nomes futuros da conta. O usuário pode ser filtrado. Registros anteriores à
+introdução dessa identificação permanecem sem autor conhecido.
 
 O dia usa GMT−4 fixo, conforme solicitado para Cuiabá: 00:00 local inclusive
 até 00:00 do dia seguinte exclusive. As datas do histórico ficam em UTC e

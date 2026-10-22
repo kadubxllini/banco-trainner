@@ -28,6 +28,7 @@ def utc_now():
 
 def ensure_schema(conn):
     if conn.execute("SELECT 1 FROM sqlite_master WHERE name='MovimentoDiario'").fetchone():
+        ensure_actor_columns(conn)
         return
     conn.executescript('''
         CREATE TABLE IF NOT EXISTS MovimentoDiario (
@@ -41,6 +42,24 @@ def ensure_schema(conn):
     ''')
     conn.execute('INSERT OR IGNORE INTO RelatorioInicio VALUES (1, ?)', (utc_now(),))
     sqlite3.Connection.commit(conn)
+    ensure_actor_columns(conn)
+
+
+def ensure_actor_columns(conn):
+    columns = {r[1] for r in conn.execute('PRAGMA table_info(MovimentoDiario)')}
+    if {'usuario_email', 'usuario_nome'} <= columns:
+        return
+    conn.execute('BEGIN IMMEDIATE')
+    try:
+        columns = {r[1] for r in conn.execute('PRAGMA table_info(MovimentoDiario)')}
+        for column in ('usuario_email', 'usuario_nome'):
+            if column not in columns:
+                conn.execute(f'ALTER TABLE MovimentoDiario ADD COLUMN {column} TEXT')
+        conn.execute('CREATE INDEX IF NOT EXISTS movimento_usuario ON MovimentoDiario(usuario_email,momento_utc)')
+        sqlite3.Connection.commit(conn)
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def snapshot(conn):
@@ -153,8 +172,9 @@ def differences(before, after):
 class MovementConnection(sqlite3.Connection):
     report_before = None
 
-    def begin_report(self):
+    def begin_report(self, actor=None):
         self.execute('BEGIN IMMEDIATE')
+        self.report_actor = actor or {}
         self.report_before = snapshot(self)
 
     def commit(self):
@@ -163,8 +183,8 @@ class MovementConnection(sqlite3.Connection):
             changes = list(differences(self.report_before, after))
             moment = utc_now()
             self.executemany('''INSERT INTO MovimentoDiario
-                (momento_utc,categoria,empresa_id,empresa,resumo,detalhes,antes,depois)
-                VALUES (?,?,?,?,?,?,?,?)''', [(moment, *change) for change in changes])
+                (momento_utc,categoria,empresa_id,empresa,resumo,detalhes,antes,depois,usuario_email,usuario_nome)
+                VALUES (?,?,?,?,?,?,?,?,?,?)''', [(moment, *change, self.report_actor.get('email'), self.report_actor.get('nome')) for change in changes])
             super().commit()
             self.report_before = None
         else:

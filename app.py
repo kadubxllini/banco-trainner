@@ -10,7 +10,7 @@ from datetime import datetime
 from collections import defaultdict
 from contextlib import closing
 
-from flask import Flask, render_template, request, redirect, jsonify, make_response, cli, abort, send_from_directory, send_file, has_request_context
+from flask import Flask, render_template, request, redirect, jsonify, make_response, cli, abort, send_from_directory, send_file, has_request_context, g
 from daily_report import MovementConnection, ensure_schema, day_bounds, local_time, CUIABA
 import json
 import math
@@ -40,7 +40,7 @@ def conectar():
     conn.execute('PRAGMA foreign_keys=ON')
     ensure_schema(conn)
     if has_request_context() and request.method == 'POST':
-        conn.begin_report()
+        conn.begin_report(getattr(g, 'current_user', None))
     return conn
 
 
@@ -609,6 +609,7 @@ def relatorio_diario():
     inicio = request.args.get('inicio', hoje)
     fim = request.args.get('fim', inicio)
     categoria = request.args.get('categoria', '')
+    usuario = request.args.get('usuario', '').strip()[:254]
     busca = request.args.get('busca', '').strip()[:200]
     categorias = ['Empresa', 'Vaga da empresa', 'Selecionadora da empresa', 'Mensagem',
                   'Anexo', 'Contato', 'Lembrete', 'Pasta', 'Vaga', 'Etapa', 'Selecionadora']
@@ -629,6 +630,11 @@ def relatorio_diario():
     if categoria:
         where += ' AND categoria = ?'
         params.append(categoria)
+    if usuario == '__sem_usuario__':
+        where += ' AND usuario_email IS NULL'
+    elif usuario:
+        where += ' AND usuario_email = ?'
+        params.append(usuario)
     if busca:
         where += " AND (empresa LIKE ? ESCAPE '\\' OR resumo LIKE ? ESCAPE '\\' OR detalhes LIKE ? ESCAPE '\\')"
         termo = '%' + busca.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
@@ -637,18 +643,25 @@ def relatorio_diario():
         total = conn.execute('SELECT COUNT(*) FROM MovimentoDiario WHERE ' + where, params).fetchone()[0]
         paginas = max(1, math.ceil(total / 100))
         pagina = min(pagina, paginas)
-        rows = conn.execute('''SELECT id,momento_utc,categoria,empresa,resumo,detalhes
+        usuarios = dict(conn.execute("SELECT usuario_email,MAX(usuario_nome) FROM MovimentoDiario WHERE usuario_email IS NOT NULL GROUP BY usuario_email"))
+        from security import auth_connection
+        with closing(auth_connection(app)) as auth:
+            for email, nome in auth.execute('SELECT email,nome FROM Usuario'):
+                usuarios[email] = nome or email.split('@')[0].capitalize()
+        usuarios = sorted(usuarios.items(), key=lambda item:(item[1] or item[0]).casefold())
+        rows = conn.execute('''SELECT id,momento_utc,categoria,empresa,resumo,detalhes,usuario_email,usuario_nome
             FROM MovimentoDiario WHERE ''' + where + ' ORDER BY momento_utc DESC,id DESC LIMIT 100 OFFSET ?',
             [*params, (pagina-1)*100]).fetchall()
         comeco = conn.execute('SELECT momento_utc FROM RelatorioInicio WHERE id=1').fetchone()[0]
     grupos = {}
-    for identificador, momento, tipo, empresa, resumo, detalhes in rows:
+    for identificador, momento, tipo, empresa, resumo, detalhes, autor_email, autor_nome in rows:
         local = local_time(momento)
         grupos.setdefault(local.strftime('%d/%m/%Y'), []).append(dict(
             id=identificador, hora=local.strftime('%H:%M:%S'), categoria=tipo,
-            empresa=empresa, resumo=resumo, detalhes=json.loads(detalhes)))
+            empresa=empresa, resumo=resumo, detalhes=json.loads(detalhes),
+            usuario_email=autor_email, usuario_nome=autor_nome or autor_email or 'Não identificado · registro anterior'))
     return render_template('daily_report.html', inicio=inicio, fim=fim, hoje=hoje,
-        categoria=categoria, busca=busca, categorias=categorias, grupos=grupos,
+        categoria=categoria, busca=busca, categorias=categorias, grupos=grupos, usuario=usuario, usuarios=usuarios,
         total=total, pagina=pagina, paginas=paginas, erro=erro,
         inicio_historico=local_time(comeco).strftime('%d/%m/%Y às %H:%M')), (400 if erro else 200)
 

@@ -1,7 +1,7 @@
 {% from 'icons.html' import icon %}
 <!doctype html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório diário · RADAR</title><link rel="icon" href="{{ url_for('static',filename='img/logosite.png') }}"><link rel="stylesheet" href="{{ url_for('static',filename='radar.css',v='20261022-native') }}"><script src="{{ url_for('static',filename='daily-report.js') }}" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório diário · RADAR</title><link rel="icon" href="{{ url_for('static',filename='img/logosite.png') }}"><link rel="stylesheet" href="{{ url_for('static',filename='radar.css',v='20261022-users') }}"><script src="{{ url_for('static',filename='daily-report.js',v='20261022-users') }}" defer></script></head>
 <body>
 <header class="app-header">
  <a class="brand" href="/" aria-label="RADAR Trainner"><img class="logo-light" src="{{ url_for('static',filename='img/logo_clara.png') }}" alt="Trainner RH"><img class="logo-dark" src="{{ url_for('static',filename='img/logo_escura.png') }}" alt="Trainner RH"><span>RADAR<small>TRAINNER RH</small></span></a>
@@ -14,18 +14,22 @@
   <label>De<input type="date" name="inicio" value="{{ inicio }}" required></label>
   <label>Até<input type="date" name="fim" value="{{ fim }}" required></label>
   <label>Movimento<select name="categoria"><option value="">Todos os movimentos</option>{% for tipo in categorias %}<option value="{{ tipo }}" {{ 'selected' if tipo==categoria else '' }}>{{ tipo }}</option>{% endfor %}</select></label>
+  <label>Usuário<select name="usuario"><option value="">Todos os usuários</option>{% for email, nome in usuarios %}<option value="{{ email }}" {{ 'selected' if email==usuario else '' }}>{{ nome }}</option>{% endfor %}<option value="__sem_usuario__" {{ 'selected' if usuario=='__sem_usuario__' else '' }}>Registros anteriores sem identificação</option></select></label>
   <label class="report-search">Buscar<input type="search" name="busca" value="{{ busca }}" placeholder="Empresa, mensagem ou detalhe…"></label>
-  <button type="submit" class="primary">{{ icon('search') }} Filtrar</button><a class="subtle-button" href="{{ url_for('relatorio_diario', inicio=hoje, fim=hoje) }}">Hoje</a>
+  <noscript><button type="submit" class="primary">Filtrar</button></noscript><a class="subtle-button" href="{{ url_for('relatorio_diario', inicio=hoje, fim=hoje) }}">Hoje</a>
+  <span id="reportFilterStatus" role="status" aria-live="polite"></span>
  </form>
+ <section id="reportResults" aria-label="Resultados do relatório">
  {% if erro %}<p class="report-error" role="alert">{{ erro }}</p>{% endif %}
  <div class="report-summary"><strong>{{ total }} movimento{{ 's' if total != 1 else '' }}</strong><span>Cada dia vai de 00:00 até o início do dia seguinte em Cuiabá.</span></div>
  <p class="report-history-note">Histórico registrado a partir de {{ inicio_historico }}. Movimentos anteriores à ativação não são reconstruídos.</p>
  {% for dia, movimentos in grupos.items() %}
  <section class="report-day" aria-label="Movimentos de {{ dia }}"><h2>{{ dia }}</h2>
  {% for movimento in movimentos %}
- <article class="report-movement"><time>{{ movimento.hora }}</time><div class="report-movement-body"><div class="report-movement-heading"><h3>{{ movimento.resumo }}</h3><span class="report-category">{{ movimento.categoria }}</span></div>{% if movimento.empresa %}<p class="report-company">{{ movimento.empresa }}</p>{% endif %}<dl>{% for detalhe in movimento.detalhes %}<div><dt>{{ detalhe.campo }}</dt><dd>{{ detalhe.valor }}</dd></div>{% endfor %}</dl></div></article>
+ <article class="report-movement"><time>{{ movimento.hora }}</time><div class="report-movement-body"><div class="report-movement-heading"><h3>{{ movimento.resumo }}</h3><span class="report-category">{{ movimento.categoria }}</span></div><p class="report-author"{% if movimento.usuario_email %} title="{{ movimento.usuario_email }}"{% endif %}>Por {{ movimento.usuario_nome }}{% if movimento.usuario_email %}<span> · {{ movimento.usuario_email }}</span>{% endif %}</p>{% if movimento.empresa %}<p class="report-company">{{ movimento.empresa }}</p>{% endif %}<dl>{% for detalhe in movimento.detalhes %}<div><dt>{{ detalhe.campo }}</dt><dd>{{ detalhe.valor }}</dd></div>{% endfor %}</dl></div></article>
  {% endfor %}</section>
  {% else %}<section class="report-empty">{{ icon('calendar') }}<h2>Nenhum movimento neste período</h2><p>Escolha outras datas ou confira os filtros. As próximas alterações aparecerão aqui automaticamente.</p></section>{% endfor %}
- {% if paginas > 1 %}<nav class="report-pagination" aria-label="Páginas do relatório">{% if pagina > 1 %}<a class="subtle-button" href="{{ url_for('relatorio_diario',inicio=inicio,fim=fim,categoria=categoria,busca=busca,pagina=pagina-1) }}">Anterior</a>{% endif %}<span>Página {{ pagina }} de {{ paginas }}</span>{% if pagina < paginas %}<a class="subtle-button" href="{{ url_for('relatorio_diario',inicio=inicio,fim=fim,categoria=categoria,busca=busca,pagina=pagina+1) }}">Próxima</a>{% endif %}</nav>{% endif %}
+ {% if paginas > 1 %}<nav class="report-pagination" aria-label="Páginas do relatório">{% if pagina > 1 %}<a class="subtle-button" href="{{ url_for('relatorio_diario',inicio=inicio,fim=fim,categoria=categoria,busca=busca,usuario=usuario,pagina=pagina-1) }}">Anterior</a>{% endif %}<span>Página {{ pagina }} de {{ paginas }}</span>{% if pagina < paginas %}<a class="subtle-button" href="{{ url_for('relatorio_diario',inicio=inicio,fim=fim,categoria=categoria,busca=busca,usuario=usuario,pagina=pagina+1) }}">Próxima</a>{% endif %}</nav>{% endif %}
+ </section>
 </main>
 </body></html>

@@ -9,7 +9,7 @@ from contextlib import closing
 from datetime import timedelta
 from pathlib import Path
 
-from flask import abort, jsonify, redirect, render_template, request, session
+from flask import abort, jsonify, redirect, render_template, request, session, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -20,14 +20,16 @@ def auth_connection(app):
     return conn
 
 
-def create_access(app, email, password):
+def create_access(app, email, password, nome=None):
     if not 12 <= len(password) <= 1024:
         raise ValueError('Use uma senha entre 12 e 1024 caracteres.')
     with closing(auth_connection(app)) as conn:
-        conn.execute('INSERT INTO Usuario(email, password_hash) VALUES (?, ?) '
-                     'ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash',
-                     (email.strip().lower(), generate_password_hash(password)))
-        conn.execute('DELETE FROM Sessao')
+        email = email.strip().lower()
+        nome = nome or ('Trainner' if email == 'suportevendas@trainner.com.br' else email.split('@')[0].capitalize())
+        conn.execute('INSERT INTO Usuario(email, password_hash, nome) VALUES (?, ?, ?) '
+                     'ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash,nome=excluded.nome',
+                     (email, generate_password_hash(password), nome))
+        conn.execute('DELETE FROM Sessao WHERE usuario_id=(SELECT id FROM Usuario WHERE email=?)', (email,))
         conn.commit()
 
 
@@ -76,8 +78,15 @@ def install_security(app):
             CREATE TABLE IF NOT EXISTS Tentativa (ip TEXT NOT NULL, email TEXT NOT NULL, momento REAL NOT NULL);
             CREATE INDEX IF NOT EXISTS tentativas_momento ON Tentativa(momento);
         ''')
+        if 'nome' not in {r[1] for r in conn.execute('PRAGMA table_info(Usuario)')}:
+            conn.execute('ALTER TABLE Usuario ADD COLUMN nome TEXT')
+        conn.execute("UPDATE Usuario SET nome='Trainner' WHERE email='suportevendas@trainner.com.br' AND (nome IS NULL OR nome='')")
         conn.commit()
     app.jinja_env.globals['csrf_token'] = csrf_token
+
+    @app.context_processor
+    def signed_in_user():
+        return {'current_user': getattr(g, 'current_user', None)}
 
     def json_request():
         return (request.is_json or request.path.startswith(('/api/', '/get_')) or
@@ -85,6 +94,7 @@ def install_security(app):
 
     @app.before_request
     def protect_request():
+        g.current_user = None
         if request.routing_exception and request.routing_exception.code == 400:
             raise request.routing_exception
         if request.endpoint == 'static':
@@ -99,10 +109,11 @@ def install_security(app):
             if token:
                 with closing(auth_connection(app)) as conn:
                     now = time.time()
-                    record = conn.execute('SELECT * FROM Sessao WHERE token=?',
+                    record = conn.execute('SELECT s.*,u.email,u.nome FROM Sessao s JOIN Usuario u ON u.id=s.usuario_id WHERE token=?',
                                           (hashlib.sha256(token.encode()).hexdigest(),)).fetchone()
                     if record and record['expires'] > now and record['last_seen'] > now - 1800:
                         valid = True
+                        g.current_user = {'email': record['email'], 'nome': record['nome'] or record['email'].split('@')[0].capitalize()}
                         conn.execute('UPDATE Sessao SET last_seen=? WHERE token=?', (now, record['token']))
                         conn.commit()
             if not valid:

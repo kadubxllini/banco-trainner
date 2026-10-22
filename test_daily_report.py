@@ -192,6 +192,41 @@ class DailyReportTests(unittest.TestCase):
         self.assertEqual(len(self.events()),baseline+2)
         self.assertEqual([e[1] for e in self.events()[-2:]],['Requisicao A','Requisicao B'])
 
+    def test_two_accounts_attribution_and_user_filter(self):
+        from security import create_access
+        self.login_token=self.login()
+        create_access(module.app,'sandra@example.test','Test-password-2026!','Sandra')
+        # Creating another account must preserve the first user's active session.
+        self.assertEqual(self.client.get('/relatorio-diario').status_code,200)
+        other=module.app.test_client()
+        token=self.token(other.get('/login'))
+        other.post('/login',data={'email':'sandra@example.test','password':'Test-password-2026!','csrf_token':token})
+        other_token=self.token(other.get('/'))
+        self.post('/salvar',{'nome_cliente':'Empresa do primeiro usuário','usuario_email':'sandra@example.test'})
+        response=other.post('/salvar',data={'nome_cliente':'Empresa da Sandra'},headers={'X-CSRF-Token':other_token})
+        self.assertEqual(response.status_code,302)
+        with closing(sqlite3.connect(module.BANCO_PATH)) as db:
+            authors=db.execute('SELECT empresa,usuario_email,usuario_nome FROM MovimentoDiario ORDER BY id').fetchall()
+        self.assertEqual(authors,[('Empresa do primeiro usuário','test@example.com','Test'),('Empresa da Sandra','sandra@example.test','Sandra')])
+        page=self.client.get('/relatorio-diario?usuario=sandra@example.test').get_data(as_text=True)
+        self.assertIn('Empresa da Sandra',page)
+        self.assertNotIn('Empresa do primeiro usuário',page)
+        self.assertIn('Por Sandra',page)
+        self.assertEqual(other.get('/relatorio-diario').status_code,200)
+
+    def test_legacy_history_migration_keeps_unknown_author(self):
+        self.company()
+        with closing(sqlite3.connect(module.BANCO_PATH)) as db:
+            db.execute('DROP INDEX movimento_usuario')
+            db.execute('ALTER TABLE MovimentoDiario DROP COLUMN usuario_email')
+            db.execute('ALTER TABLE MovimentoDiario DROP COLUMN usuario_nome')
+            db.commit()
+        response=self.client.get('/relatorio-diario?usuario=__sem_usuario__')
+        self.assertEqual(response.status_code,200)
+        self.assertIn('Empresa Teste Diário',response.get_data(as_text=True))
+        self.assertIn('Não identificado',response.get_data(as_text=True))
+        self.assertEqual(len(self.events()),1)
+
 
 if __name__ == '__main__':
     unittest.main()
