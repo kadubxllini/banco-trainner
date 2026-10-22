@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
  window.abrirChat=function(...args){previousFocus=document.activeElement;document.body.classList.add('radar-detail');backdrop.hidden=false;originalOpen(...args);document.getElementById('closeDetail').focus();};
  function closeDetail(){document.body.classList.remove('radar-detail');backdrop.hidden=true;previousFocus?.focus();}
  document.getElementById('closeDetail').addEventListener('click',closeDetail);backdrop.addEventListener('click',closeDetail);
- document.addEventListener('keydown',e=>{if(e.key==='Escape'){const modals=[...document.querySelectorAll('.modal')].filter(m=>getComputedStyle(m).display!=='none');if(modals.length)modals.at(-1).style.display='none';else closeDetail();}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'){const modals=[...document.querySelectorAll('.modal')].filter(m=>getComputedStyle(m).display!=='none');if(!modals.length)closeDetail();}});
  document.querySelectorAll('.company-button').forEach(b=>b.addEventListener('click',()=>window.abrirChat(b.dataset.id,b.dataset.name)));
  document.querySelectorAll('.radar-edit').forEach(b=>b.addEventListener('click',()=>{prepararEdicao(b);organizeVacancies(document.getElementById('modalEditar'));const find=document.querySelector('#modalEditar .vacancy-search');find.value='';document.querySelectorAll('#modalEditar .vacancy-row').forEach(r=>r.hidden=false);}));
  document.querySelectorAll('.folder-edit').forEach(b=>b.addEventListener('click',()=>prepararEdicaoPasta(b)));

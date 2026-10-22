@@ -1,5 +1,5 @@
 {% from 'icons.html' import icon %}
-    <div id="modalCliente" class="modal">
+    <dialog id="modalCliente" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Cadastrar Cliente</h3>
@@ -48,9 +48,9 @@
                 </div>
             </form>
         </div>
-    </div>
+    </dialog>
 
-    <div id="modalEditar" class="modal">
+    <dialog id="modalEditar" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Editar Cliente</h3>
@@ -109,37 +109,37 @@
                 </div>
             </form>
         </div>
-    </div>
+    </dialog>
 
-    <div id="modalGerenciarVagas" class="modal">
+    <dialog id="modalGerenciarVagas" class="modal">
         <div class="modal-content modal-vagas">
             <div class="modal-header"><h3>Gerenciar Vagas</h3><span class="close-modal" onclick="fecharModalVagas()">×</span></div>
             <form action="/salvar_vaga" method="POST" class="vaga-add-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_vaga" placeholder="Nova vaga" required><button type="submit" class="btn-yellow">Adicionar</button></form>
             <div class="vagas-lista-container">{% for vaga in vagas %}<div class="vaga-item"><span>{{ vaga[1] }}</span><div class="vaga-acoes"><button data-nome="{{ vaga[1] }}" onclick="prepararEdicaoVaga('{{ vaga[0] }}', this.dataset.nome)" class="btn-icon" aria-label="Editar" title="Editar">{{ icon('edit') }}</button><a href="/excluir_vaga/{{ vaga[0] }}" class="btn-icon delete" onclick="return confirm('Excluir vaga?')" aria-label="Excluir" title="Excluir">{{ icon('trash') }}</a></div></div>{% endfor %}</div>
         </div>
-    </div>
+    </dialog>
 
-    <div id="modalGerenciarStatus" class="modal">
+    <dialog id="modalGerenciarStatus" class="modal">
         <div class="modal-content modal-vagas">
             <div class="modal-header"><h3>Gerenciar Status</h3><span class="close-modal" onclick="fecharModalStatus()">×</span></div>
             <form action="/salvar_status" method="POST" class="vaga-add-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_status" placeholder="Novo status" required><button type="submit" class="btn-yellow">Adicionar</button></form>
             <div class="vagas-lista-container">{% for st in status_lista %}<div class="vaga-item"><span>{{ st[1] }}</span><div class="vaga-acoes"><button data-nome="{{ st[1] }}" onclick="prepararEdicaoStatus('{{ st[0] }}', this.dataset.nome)" class="btn-icon" aria-label="Editar" title="Editar">{{ icon('edit') }}</button><a href="/excluir_status/{{ st[0] }}" class="btn-icon delete" onclick="return confirm('Excluir status?')" aria-label="Excluir" title="Excluir">{{ icon('trash') }}</a></div></div>{% endfor %}</div>
         </div>
-    </div>
+    </dialog>
     
-    <div id="modalGerenciarSelecionadoras" class="modal">
+    <dialog id="modalGerenciarSelecionadoras" class="modal">
         <div class="modal-content modal-vagas">
             <div class="modal-header"><h3>Gerenciar Selecionadoras</h3><span class="close-modal" onclick="fecharModalSelecionadoras()">×</span></div>
             <form action="/salvar_selecionadora" method="POST" class="vaga-add-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_selecionadora" placeholder="Nova selecionadora" required><button type="submit" class="btn-yellow">Adicionar</button></form>
             <div class="vagas-lista-container">{% for sel in selecionadoras %}<div class="vaga-item"><span>{{ sel[1] }}</span><div class="vaga-acoes"><button data-nome="{{ sel[1] }}" onclick="prepararEdicaoSelecionadora('{{ sel[0] }}', this.dataset.nome)" class="btn-icon" aria-label="Editar" title="Editar">{{ icon('edit') }}</button><a href="/excluir_selecionadora/{{ sel[0] }}" class="btn-icon delete" onclick="return confirm('Excluir selecionadora?')" aria-label="Excluir" title="Excluir">{{ icon('trash') }}</a></div></div>{% endfor %}</div>
         </div>
-    </div>
+    </dialog>
 
-    <div id="modalEditarVaga" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Vaga</h3><span class="close-modal" onclick="fecharModalEditarVaga()">×</span></div><form id="formEditarVaga" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_vaga" id="edit_nome_vaga" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
-    <div id="modalEditarStatus" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Status</h3><span class="close-modal" onclick="fecharModalEditarStatus()">×</span></div><form id="formEditarStatus" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_status" id="edit_nome_st" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
-    <div id="modalEditarSelecionadora" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Selecionadora</h3><span class="close-modal" onclick="fecharModalEditarSelecionadora()">×</span></div><form id="formEditarSelecionadora" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_selecionadora" id="edit_nome_sel" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></div>
+    <dialog id="modalEditarVaga" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Vaga</h3><span class="close-modal" onclick="fecharModalEditarVaga()">×</span></div><form id="formEditarVaga" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_vaga" id="edit_nome_vaga" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></dialog>
+    <dialog id="modalEditarStatus" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Status</h3><span class="close-modal" onclick="fecharModalEditarStatus()">×</span></div><form id="formEditarStatus" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_status" id="edit_nome_st" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></dialog>
+    <dialog id="modalEditarSelecionadora" class="modal"><div class="modal-content"><div class="modal-header"><h3>Editar Selecionadora</h3><span class="close-modal" onclick="fecharModalEditarSelecionadora()">×</span></div><form id="formEditarSelecionadora" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="text" name="nome_selecionadora" id="edit_nome_sel" required><div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div></form></div></dialog>
 
-    <div id="modalPasta" class="modal">
+    <dialog id="modalPasta" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Nova Pasta</h3><span class="close-modal" onclick="fecharModalPasta()">×</span></div>
             <form action="/salvar_pasta" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -149,9 +149,9 @@
                 <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
             </form>
         </div>
-    </div>
+    </dialog>
 
-    <div id="modalEditarPasta" class="modal">
+    <dialog id="modalEditarPasta" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>Editar Pasta</h3><span class="close-modal" onclick="fecharModalEditarPasta()">×</span></div>
             <form id="formEditarPasta" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -161,9 +161,9 @@
                 <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
             </form>
         </div>
-    </div>
+    </dialog>
 
-    <div id="modalCalendario" class="modal">
+    <dialog id="modalCalendario" class="modal">
         <div class="modal-content modal-calendario-content">
             <div class="modal-header">
                 <div><h3>Calendário</h3><p class="calendar-subtitle">Interações e lembretes, organizados por dia.</p></div>
@@ -177,9 +177,9 @@
               <label class="calendar-jump">Ir para uma data<input id="calendarDate" type="date" aria-label="Ir para uma data"></label>
             </section><section id="interacoesDiaContainer" class="calendar-agenda" aria-label="Detalhes do dia"><p class="agenda-eyebrow">AGENDA DO DIA</p><h4 id="dataSelecionadaLabel"></h4><div id="listaInteracoes" class="lista-interacoes-calendario" aria-live="polite"></div></section></div>
         </div>
-    </div>
+    </dialog>
 
-    <div id="modalLembretes" class="modal">
+    <dialog id="modalLembretes" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Meus Lembretes</h3>
@@ -187,9 +187,9 @@
             </div>
             <div id="listaLembretes"></div>
         </div>
-    </div>
+    </dialog>
 
-    <div id="modalCriarLembrete" class="modal">
+    <dialog id="modalCriarLembrete" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Agendar Lembrete</h3>
@@ -203,7 +203,7 @@
                 <div class="modal-buttons"><button type="submit" class="btn-confirmar">Salvar</button></div>
             </form>
         </div>
-    </div>
+    </dialog>
 
 
 

@@ -46,7 +46,7 @@ function actionIcon(name) {
         // Fechar Modais Clicando Fora
         window.onclick = function(event) {
             if (event.target.classList.contains('modal')) {
-                event.target.style.display = 'none';
+                fecharJanelaModal(event.target);
                 let containerInt = document.getElementById('interacoesDiaContainer');
                 if(containerInt) containerInt.style.display = 'none';
             }
@@ -168,18 +168,18 @@ function actionIcon(name) {
         // ----------------------------------------------------
         // LÓGICA DE MODAIS DE ABERTURA E FECHAMENTO
         // ----------------------------------------------------
-        function abrirModalVagas() { document.getElementById('modalGerenciarVagas').style.display = 'flex'; }
-        function fecharModalVagas() { document.getElementById('modalGerenciarVagas').style.display = 'none'; }
-        function abrirModalStatus() { document.getElementById('modalGerenciarStatus').style.display = 'flex'; }
-        function fecharModalStatus() { document.getElementById('modalGerenciarStatus').style.display = 'none'; }
-        function abrirModalSelecionadoras() { document.getElementById('modalGerenciarSelecionadoras').style.display = 'flex'; }
-        function fecharModalSelecionadoras() { document.getElementById('modalGerenciarSelecionadoras').style.display = 'none'; }
-        function abrirModalCliente() { document.getElementById('modalCliente').style.display = 'flex'; }
-        function fecharModalCliente() { document.getElementById('modalCliente').style.display = 'none'; }
-        function abrirModalPasta() { document.getElementById('modalPasta').style.display = 'flex'; }
-        function fecharModalPasta() { document.getElementById('modalPasta').style.display = 'none'; }
-        function fecharModalEditar() { document.getElementById('modalEditar').style.display = 'none'; }
-        function fecharModalEditarPasta() { document.getElementById('modalEditarPasta').style.display = 'none'; }
+        function abrirModalVagas() { abrirJanelaModal('modalGerenciarVagas'); }
+        function fecharModalVagas() { fecharJanelaModal('modalGerenciarVagas'); }
+        function abrirModalStatus() { abrirJanelaModal('modalGerenciarStatus'); }
+        function fecharModalStatus() { fecharJanelaModal('modalGerenciarStatus'); }
+        function abrirModalSelecionadoras() { abrirJanelaModal('modalGerenciarSelecionadoras'); }
+        function fecharModalSelecionadoras() { fecharJanelaModal('modalGerenciarSelecionadoras'); }
+        function abrirModalCliente() { abrirJanelaModal('modalCliente'); }
+        function fecharModalCliente() { fecharJanelaModal('modalCliente'); }
+        function abrirModalPasta() { abrirJanelaModal('modalPasta'); }
+        function fecharModalPasta() { fecharJanelaModal('modalPasta'); }
+        function fecharModalEditar() { fecharJanelaModal('modalEditar'); }
+        function fecharModalEditarPasta() { fecharJanelaModal('modalEditarPasta'); }
 
         // ----------------------------------------------------
         // LÓGICA DE PREPARAÇÃO DE EDIÇÃO (PREENCHER DADOS)
@@ -221,7 +221,7 @@ function actionIcon(name) {
             
             document.querySelectorAll('.edit-sel-check').forEach(c => c.checked = sIds.includes(c.value));
             
-            document.getElementById('modalEditar').style.display = 'flex';
+            abrirJanelaModal('modalEditar');
 
             const contatosContainer = document.getElementById('contatos-container');
             contatosContainer.innerHTML = ''; 
@@ -233,31 +233,31 @@ function actionIcon(name) {
             document.getElementById('formEditarVaga').action = '/editar_vaga/'+id; 
             document.getElementById('edit_nome_vaga').value = n; 
             fecharModalVagas(); 
-            document.getElementById('modalEditarVaga').style.display = 'flex'; 
+            abrirJanelaModal('modalEditarVaga');
         }
-        function fecharModalEditarVaga() { document.getElementById('modalEditarVaga').style.display = 'none'; abrirModalVagas(); }
+        function fecharModalEditarVaga() { fecharJanelaModal('modalEditarVaga'); abrirModalVagas(); }
 
         function prepararEdicaoStatus(id, n) { 
             document.getElementById('formEditarStatus').action = '/editar_status/'+id; 
             document.getElementById('edit_nome_st').value = n; 
             fecharModalStatus(); 
-            document.getElementById('modalEditarStatus').style.display = 'flex'; 
+            abrirJanelaModal('modalEditarStatus');
         }
-        function fecharModalEditarStatus() { document.getElementById('modalEditarStatus').style.display = 'none'; abrirModalStatus(); }
+        function fecharModalEditarStatus() { fecharJanelaModal('modalEditarStatus'); abrirModalStatus(); }
 
         function prepararEdicaoSelecionadora(id, n) { 
             document.getElementById('formEditarSelecionadora').action = '/editar_selecionadora/'+id; 
             document.getElementById('edit_nome_sel').value = n; 
             fecharModalSelecionadoras(); 
-            document.getElementById('modalEditarSelecionadora').style.display = 'flex'; 
+            abrirJanelaModal('modalEditarSelecionadora');
         }
-        function fecharModalEditarSelecionadora() { document.getElementById('modalEditarSelecionadora').style.display = 'none'; abrirModalSelecionadoras(); }
+        function fecharModalEditarSelecionadora() { fecharJanelaModal('modalEditarSelecionadora'); abrirModalSelecionadoras(); }
 
         function prepararEdicaoPasta(b) { 
             document.getElementById('formEditarPasta').action = '/editar_pasta/'+b.getAttribute('data-id'); 
             document.getElementById('edit_nome_pasta').value = b.getAttribute('data-nome'); 
             document.getElementById('edit_parent_pasta').value = b.getAttribute('data-parent') || ''; 
-            document.getElementById('modalEditarPasta').style.display = 'flex'; 
+            abrirJanelaModal('modalEditarPasta');
         }
 
         function adicionarContatoBloco(nome = '', email = '', telefone = '') {
@@ -281,13 +281,13 @@ function actionIcon(name) {
         let idFocoChat = null;
 
         function abrirModalCalendario() {
-            document.getElementById('modalCalendario').style.display = 'flex';
+            abrirJanelaModal('modalCalendario');
             dataCalendario = new Date(); 
             fetchDiasComInteracao().then(() => renderCalendario());
         }
 
         function fecharModalCalendario() {
-            document.getElementById('modalCalendario').style.display = 'none';
+            fecharJanelaModal('modalCalendario');
             document.getElementById('interacoesDiaContainer').style.display = 'none';
         }
 
@@ -619,11 +619,11 @@ function actionIcon(name) {
         let idLembreteAtual = null;
 
         function abrirModalLembretes() {
-            document.getElementById('modalLembretes').style.display = 'flex';
+            abrirJanelaModal('modalLembretes');
             carregarListaLembretes();
         }
-        function fecharModalLembretes() { document.getElementById('modalLembretes').style.display = 'none'; }
-        function fecharModalCriarLembrete() { document.getElementById('modalCriarLembrete').style.display = 'none'; }
+        function fecharModalLembretes() { fecharJanelaModal('modalLembretes'); }
+        function fecharModalCriarLembrete() { fecharJanelaModal('modalCriarLembrete'); }
 
         function criarLembrete(msgId, texto) {
             document.getElementById('lembreteMsgId').value = msgId;
@@ -633,7 +633,7 @@ function actionIcon(name) {
             agora.setMinutes(agora.getMinutes() - agora.getTimezoneOffset());
             
             document.getElementById('lembreteDataHora').value = agora.toISOString().slice(0, 16);
-            document.getElementById('modalCriarLembrete').style.display = 'flex';
+            abrirJanelaModal('modalCriarLembrete');
         }
 
         function salvarNovoLembrete(e) {
