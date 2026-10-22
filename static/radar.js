@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mobileFolder').value=folder;
  }
  [search,status].forEach(el => el.addEventListener('input', filter));
- document.querySelectorAll('.view-tab').forEach(button => button.addEventListener('click', () => { view = button.dataset.view; if(view==='all'){folder='';document.querySelectorAll('.folder-filter').forEach(b=>b.classList.remove('active'));} document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b === button));filter(); }));
+ document.querySelectorAll('.view-tab[data-view]').forEach(button => button.addEventListener('click', () => { view = button.dataset.view; if(view==='all'){folder='';document.querySelectorAll('.folder-filter').forEach(b=>b.classList.remove('active'));} document.querySelectorAll('.view-tab[data-view]').forEach(b => b.classList.toggle('active', b === button));filter(); }));
  function clear(){search.value='';status.value='';folder='';view='all';document.querySelectorAll('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.view==='all'));document.querySelectorAll('.folder-filter').forEach(b=>b.classList.remove('active'));filter();}
  document.getElementById('clearFilters').addEventListener('click',clear);
  document.getElementById('mobileFolder').addEventListener('change',event=>{folder=event.target.value;document.querySelectorAll('.folder-filter').forEach(b=>b.classList.toggle('active',b.dataset.folder===folder));filter();});

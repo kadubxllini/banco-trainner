@@ -10,7 +10,10 @@ from datetime import datetime
 from collections import defaultdict
 from contextlib import closing
 
-from flask import Flask, render_template, request, redirect, jsonify, make_response, cli, abort, send_from_directory, send_file
+from flask import Flask, render_template, request, redirect, jsonify, make_response, cli, abort, send_from_directory, send_file, has_request_context
+from daily_report import MovementConnection, ensure_schema, day_bounds, local_time, CUIABA
+import json
+import math
 from werkzeug.utils import secure_filename
 
 # ==========================================
@@ -33,8 +36,11 @@ def conectar():
     """Retorna a conexão com o SQLite, garantindo que os diretórios existam."""
     os.makedirs(BANCO_DIR, exist_ok=True)
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True) 
-    conn = sqlite3.connect(BANCO_PATH, timeout=10)
+    conn = sqlite3.connect(BANCO_PATH, timeout=10, factory=MovementConnection)
     conn.execute('PRAGMA foreign_keys=ON')
+    ensure_schema(conn)
+    if has_request_context() and request.method == 'POST':
+        conn.begin_report()
     return conn
 
 
@@ -436,6 +442,7 @@ def salvar_pasta():
     if nome:
         conn = conectar()
         if not parent_id and conn.execute('SELECT id FROM Pasta WHERE LOWER(nome) = LOWER(?) AND parent_id IS NULL', (nome,)).fetchone():
+            conn.close()
             return redirect('/') 
         conn.execute('INSERT INTO Pasta (nome, parent_id) VALUES (?, ?)', (nome, parent_id))
         conn.commit()
@@ -595,6 +602,56 @@ def exportar_relatorio():
     response.headers["Content-Disposition"] = f"attachment; filename=relatorio_clientes_{datetime.now().strftime('%d_%m_%Y')}.csv"
     response.headers["Content-type"] = "text/csv; charset=utf-8"
     return response
+
+@app.get('/relatorio-diario')
+def relatorio_diario():
+    hoje = datetime.now(CUIABA).date().isoformat()
+    inicio = request.args.get('inicio', hoje)
+    fim = request.args.get('fim', inicio)
+    categoria = request.args.get('categoria', '')
+    busca = request.args.get('busca', '').strip()[:200]
+    categorias = ['Empresa', 'Vaga da empresa', 'Selecionadora da empresa', 'Mensagem',
+                  'Anexo', 'Contato', 'Lembrete', 'Pasta', 'Vaga', 'Etapa', 'Selecionadora']
+    erro = None
+    try:
+        primeiro, ultimo = day_bounds(inicio, fim)
+        pagina = int(request.args.get('pagina', 1))
+        if pagina < 1 or categoria and categoria not in categorias:
+            raise ValueError('Filtro inválido.')
+    except (ValueError, OverflowError):
+        erro = 'Confira as datas: o início deve vir antes do fim, em um período de até 366 dias.'
+        inicio = fim = hoje
+        primeiro, ultimo = day_bounds(inicio, fim)
+        pagina = 1
+        categoria = ''
+    where = 'momento_utc >= ? AND momento_utc < ?'
+    params = [primeiro, ultimo]
+    if categoria:
+        where += ' AND categoria = ?'
+        params.append(categoria)
+    if busca:
+        where += " AND (empresa LIKE ? ESCAPE '\\' OR resumo LIKE ? ESCAPE '\\' OR detalhes LIKE ? ESCAPE '\\')"
+        termo = '%' + busca.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+        params.extend([termo] * 3)
+    with closing(conectar()) as conn:
+        total = conn.execute('SELECT COUNT(*) FROM MovimentoDiario WHERE ' + where, params).fetchone()[0]
+        paginas = max(1, math.ceil(total / 100))
+        pagina = min(pagina, paginas)
+        rows = conn.execute('''SELECT id,momento_utc,categoria,empresa,resumo,detalhes
+            FROM MovimentoDiario WHERE ''' + where + ' ORDER BY momento_utc DESC,id DESC LIMIT 100 OFFSET ?',
+            [*params, (pagina-1)*100]).fetchall()
+        comeco = conn.execute('SELECT momento_utc FROM RelatorioInicio WHERE id=1').fetchone()[0]
+    grupos = {}
+    for identificador, momento, tipo, empresa, resumo, detalhes in rows:
+        local = local_time(momento)
+        grupos.setdefault(local.strftime('%d/%m/%Y'), []).append(dict(
+            id=identificador, hora=local.strftime('%H:%M:%S'), categoria=tipo,
+            empresa=empresa, resumo=resumo, detalhes=json.loads(detalhes)))
+    return render_template('daily_report.html', inicio=inicio, fim=fim, hoje=hoje,
+        categoria=categoria, busca=busca, categorias=categorias, grupos=grupos,
+        total=total, pagina=pagina, paginas=paginas, erro=erro,
+        inicio_historico=local_time(comeco).strftime('%d/%m/%Y às %H:%M')), (400 if erro else 200)
+
 
 @app.get('/backup/banco')
 def baixar_backup():

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Destination = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Backups RADAR'),
+    [string]$Destination = 'C:\Users\SV_Trainner\Documents\Comercial\banco-trainner',
     [string]$Time = '13:00'
 )
 $ErrorActionPreference = 'Stop'

@@ -89,7 +89,7 @@ def install_security(app):
             raise request.routing_exception
         if request.endpoint == 'static':
             filename = (request.view_args or {}).get('filename', '')
-            public = {'radar.css', 'login.css', 'security.js', 'legacy.js', 'radar.js', 'calendar.js',
+            public = {'radar.css', 'login.css', 'security.js', 'legacy.js', 'radar.js', 'calendar.js', 'daily-report.js',
                       'img/logo_clara.png', 'img/logo_escura.png', 'img/logosite.png'}
             if filename in public:
                 return None
