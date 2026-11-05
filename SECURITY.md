@@ -19,6 +19,9 @@ python setup_access.py --email seu-email@empresa.com.br
 ```
 
 A senha é solicitada sem eco e não deve ser colocada no comando ou no Git.
+Ela deve ter entre 12 e 1024 caracteres. O comando cria ou redefine a conta;
+o nome exibido é derivado do e-mail, com a identificação Trainner para a conta
+de suporte existente. Não há tela pública para administrar usuários.
 
 ## Publicação na VPS
 
@@ -37,6 +40,10 @@ A CSP bloqueia objetos, frames e origens externas, mas ainda permite scripts inl
 `python test_security.py` testa autenticação de todas as rotas, CSRF, logout revogável, expiração, limite de tentativas, exclusões, anexos e CSV em bancos temporários.
 
 `python validate_radar.py` verifica os fluxos funcionais autenticados em uma cópia do banco.
+Essas verificações também precisam de um banco local inicializado em
+`banco_de_dados/dados.db`; os dados de trabalho são copiados para diretórios
+temporários. `validate_radar.py` gera `outputs/radar-preview.html`, que pode conter
+dados copiados do banco e deve permanecer privado e fora do Git.
 
 O relatório guarda nome e e-mail do autor no banco operacional e no backup baixado.
 Hashes de senha e sessões ficam no banco de acesso separado. Registros antigos

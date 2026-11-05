@@ -49,6 +49,16 @@ A senha é solicitada sem exibi-la. Abra [localhost:5000](http://127.0.0.1:5000)
 O início por `app.py` cria as tabelas. O servidor de desenvolvimento é para uso
 local; produção usa Gunicorn e Nginx.
 
+O `INICIAR.bat` é um iniciador legado: usa `python` do PATH, abre o navegador
+e executa `backup_manager.py` antes do servidor. Ele não seleciona automaticamente
+o ambiente `.venv`. Prefira os comandos acima para desenvolvimento.
+`backup_manager.py` copia somente o banco local e, quando executado diretamente,
+mantém até 5 arquivos `.db` na pasta `backups/`; não é o backup consistente da VPS
+nem o agendamento Windows. Não o use para copiar um banco com gravações em curso.
+
+O ambiente `.venv` criado pelo exemplo deve permanecer fora dos commits; ele não
+está coberto pelo `.gitignore` atual. Antes de usar `git add`, confira o status.
+
 | Caminho local padrão | Conteúdo |
 | --- | --- |
 | `banco_de_dados/dados.db` | Empresas, processos, mensagens e relatório |
@@ -70,6 +80,9 @@ Desenvolva com um banco separado e nunca publique credenciais ou backups.
 Download e backup Windows não incluem contas nem anexos. Para o agendamento
 Windows, o PC precisa estar ligado, com internet e usuário conectado ao Windows.
 Backups na própria VPS não substituem uma cópia privada externa.
+Na instalação Windows, o destino padrão é específico do computador solicitado:
+`C:\Users\SV_Trainner\Documents\Comercial\banco-trainner`. Em outro PC, personalize
+o parâmetro `-Destination` conforme as instruções do instalador.
 
 ## Documentação
 

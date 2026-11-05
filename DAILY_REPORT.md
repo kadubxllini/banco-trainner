@@ -3,6 +3,9 @@
 A aba Relatório diário abre `/relatorio-diario`, exige o mesmo login do painel
 e permite filtrar por uma data ou período, movimento e texto (incluindo empresa
 e mensagem). Exibe até 100 movimentos por página, agrupados por dia.
+Cada consulta aceita um período de até 366 dias inclusivos. Isso limita a busca,
+não a retenção do histórico. A opção de usuário também inclui os registros
+anteriores sem identificação.
 Os filtros são automáticos; datas, movimento e usuário aplicam na mudança,
 e a busca aplica após uma breve pausa na digitação, sem recarregar o formulário.
 Cada novo movimento guarda nome e e-mail da conta autenticada, independentemente
@@ -37,3 +40,7 @@ estiver contido no arquivo importado.
 
 Validação local: `python -m unittest test_security.SecurityTests test_daily_report.DailyReportTests`.
 Os testes usam bancos descartáveis e credenciais exclusivas de teste.
+
+O GMT−4 explícito descrito aqui é do relatório diário. As rotinas antigas de
+mensagens e vencimento de lembretes ainda usam o horário local do processo/servidor;
+não presuma que configurar o relatório altera automaticamente essas rotinas.

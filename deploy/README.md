@@ -37,6 +37,15 @@ certificado e configuração privada já preparados. Instale as dependências de
 `requirements-production.txt`. Na primeira instalação, inicialize as tabelas
 com `criar_tabelas()` antes de iniciar o Gunicorn.
 
+A configuração Nginx usa a zona `radar_login`: ela precisa existir no contexto
+`http` antes de carregar o site. Na instalação em uso, a declaração é externa ao
+repositório, em `/etc/nginx/conf.d/00-radar-limits.conf`. O formato esperado é
+`limit_req_zone <chave-do-limite> zone=radar_login:10m rate=10r/m;`; a chave pode
+restringir o limite aos POST de login. Preserve e revise essa configuração ao
+provisionar outra VPS; o script não a cria. Confira também os includes
+`/etc/nginx/radar-cloudflare.inc` e `/etc/nginx/radar-proxy.inc`. As faixas de IP da
+Cloudflare versionadas devem ser revisadas quando a infraestrutura for atualizada.
+
 Após revisar e validar o commit, na raiz do repositório:
 
 ```text
