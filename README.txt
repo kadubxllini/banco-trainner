@@ -1,20 +1,12 @@
-INSTRUÇÕES PARA RODAR O SISTEMA
+RADAR - Trainner RH
 
-Para que o banco de dados funcione corretamente no seu computador, siga estes dois passos simples:
+Documentacao atual: README.md (pagina inicial do GitHub).
 
-==========================================
-1. Instalar o Python
+Para usar: https://radar.clasure.com.br
+Nao e necessario instalar Python no computador do usuario.
 
-- Baixe a versão mais recente em: (https://www.python.org/downloads/)
-- **IMPORTANTE:** Durante a instalação, você **DEVE** marcar a caixinha **"Launch when ready"** logo na primeira tela.
-- A sequência de execução é "y", "y", "y" e "n".
-==========================================
-
-==========================================
-2. Instalar as Bibliotecas
-
-Após instalar o Python, pesquise "CMD" no Windows, e cole o comando abaixo:
-
-pip install flask werkzeug
-
-==========================================
+Desenvolvimento: README.md
+Relatorio: DAILY_REPORT.md
+Seguranca: SECURITY.md
+VPS: deploy/README.md
+Backup Windows: windows-backup/LEIA-ME.txt

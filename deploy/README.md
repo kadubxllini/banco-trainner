@@ -28,3 +28,49 @@ sudo systemctl start radar-backup.service
 Para uma atualização, crie o backup antes de alterar a revisão, instale um novo diretório em `releases`, valide, troque o link `current` e reinicie apenas `radar`. Para rollback de código, restaure o link para a revisão anterior. Não sobrescreva `shared` durante atualizações.
 
 O login é criado interativamente com `setup_access.py`; a senha não faz parte da revisão nem dos scripts de deploy.
+
+## Publicar uma revisão
+
+`update-release.sh` atualiza uma instalação existente; não é um instalador inicial.
+Ele espera `/home/opc/radar-final.tar`, os diretórios persistentes, ambiente Python,
+certificado e configuração privada já preparados. Instale as dependências de
+`requirements-production.txt`. Na primeira instalação, inicialize as tabelas
+com `criar_tabelas()` antes de iniciar o Gunicorn.
+
+Após revisar e validar o commit, na raiz do repositório:
+
+```text
+git archive --format=tar --output=radar-final.tar HEAD
+```
+
+Transfira o arquivo para `/home/opc/radar-final.tar` e o script
+`deploy/update-release.sh` para o servidor por um canal administrativo autorizado.
+Garanta finais de linha LF ao transferir o script do Windows. Na VPS:
+
+```bash
+sudo bash /home/opc/update-release.sh <hash-do-commit>
+```
+
+O script cria backup, prepara uma nova release, valida o Nginx, troca `current`,
+reinicia o RADAR e verifica `/login` via HTTPS no origin. Se esse último teste
+falhar, restaura o link da release anterior. Esse rollback não desfaz migrações
+do banco nem todas as mudanças de configuração; confira-as separadamente.
+
+Confira também o domínio público, login, telas alteradas e estáticos versionados:
+o teste do origin não verifica o cache do navegador/CDN. Migrações do relatório
+são aditivas e executadas ao abrir uma conexão. Nunca substitua o banco de
+produção por uma cópia local durante um deploy de código.
+
+## Recuperação de dados
+
+Preserve os dados atuais em backup privado antes de restaurar. Pare `radar.service`
+para impedir gravações concorrentes. Valide o SQLite escolhido com
+`PRAGMA integrity_check`, restaure no diretório persistente correto e mantenha
+dono `radar:radar` e permissões privadas. Reinicie e confira integridade, login
+e painel. Trate arquivos WAL/journal de forma consistente; não copie um SQLite
+em uso como se fosse um snapshot.
+
+O `.db` baixado no painel contém apenas dados operacionais e relatório.
+O `radar-auto-*.tar.gz` contém também `access.db`, `session.key` e `uploads/`.
+Restaurar autenticação pode restaurar sessões antigas: considere revogá-las.
+Restaurar um banco antigo também retorna o relatório ao estado daquele backup.

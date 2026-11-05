@@ -35,3 +35,16 @@ Para mudar horario/pasta, execute no PowerShell, a partir da pasta extraida:
 
 Reinstalar atualiza a mesma tarefa e nao cria tarefas duplicadas.
 
+
+Depois da mensagem de sucesso, os quatro arquivos extraidos podem ser apagados.
+O agendamento usa os arquivos em %LOCALAPPDATA%\RADAR Backup. Preserve essa pasta
+enquanto quiser manter o backup automatico funcionando. O instalador configura
+apenas o usuario e computador em que foi executado.
+
+Para remover, exclua a tarefa RADAR Backup Diario do seu usuario no Agendador
+de Tarefas e depois a pasta %LOCALAPPDATA%\RADAR Backup. Os bancos baixados
+podem ser preservados no destino escolhido.
+
+Para montar o ZIP a partir da raiz do repositorio, no PowerShell:
+  Compress-Archive -Path windows-backup\* -DestinationPath Instalador-Backup-RADAR.zip
+Extraia o ZIP no computador de destino antes de executar INSTALAR.bat.
