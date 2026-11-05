@@ -1,4 +1,4 @@
-# RADAR · Trainner RH
+# RADAR - Trainner RH
 
 Painel web para acompanhar empresas e processos de recrutamento em uma tabela
 compacta, com vagas, etapas, selecionadoras e pastas.
@@ -7,7 +7,7 @@ compacta, com vagas, etapas, selecionadoras e pastas.
 Para usar basta um navegador e uma conta fornecida pela equipe. Não é necessário
 instalar Python no computador do usuário.
 
-## Funcionalidades
+## O que o sistema faz
 
 - Empresas em pastas e subpastas, busca e filtros.
 - Várias vagas por empresa, etapas editáveis na tabela e taxas por processo.
