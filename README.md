@@ -1,5 +1,12 @@
 # RADAR - Trainner RH
 
+[![Testes](https://github.com/kadubxllini/banco-trainner/actions/workflows/tests.yml/badge.svg)](https://github.com/kadubxllini/banco-trainner/actions/workflows/tests.yml)
+
+![Interface do projeto](docs/images/painel.png)
+
+Painel real executado localmente com empresa e conta fictícias; nenhum dado da instalação da Trainner foi usado.
+
+
 Painel web para acompanhar empresas e processos de recrutamento em uma tabela
 compacta, com vagas, etapas, selecionadoras e pastas.
 
@@ -105,3 +112,7 @@ Os testes usam bancos temporários e contas exclusivas de teste. A suíte copia
 `banco_de_dados/dados.db` como base; inicialize o banco local com `app.py` antes.
 Confira também os fluxos no navegador, nos dois temas, em telas menores e com zoom.
 Não inclua bancos ou artefatos de teste nos commits.
+
+## Testes no GitHub
+
+O workflow usa Python 3.12, cria uma base sintética e executa as suítes de segurança e relatório diário. Não conecta à VPS nem usa dados de produção. Para preparar a mesma base em um clone novo, execute `python scripts/prepare_test_database.py`; o comando recusa sobrescrever um banco existente.
